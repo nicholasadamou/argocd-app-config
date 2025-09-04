@@ -120,7 +120,9 @@ This file defines an ApplicationSet that manages multiple applications with sele
 ### Selective Sync Benefits
 
 ✅ **Isolated Deployments**: Changes to dev won't trigger production syncs
+
 ✅ **Reduced Noise**: No unnecessary sync operations
+
 ✅ **Environment-Specific Hooks**: Post-sync tests only run for changed environments
 
 ## 🎯 Usage
