@@ -114,13 +114,13 @@ This file defines an ApplicationSet that manages multiple applications with sele
 ### Environment-Specific Manifests
 
 - **Dev Environment** (`dev/`): 2 replicas, basic configuration
-- **Staging Environment** (`staging/`): 3 replicas, environment labels  
+- **Staging Environment** (`staging/`): 3 replicas, environment labels
 - **Production Environment** (`production/`): 5 replicas, resource limits, LoadBalancer service
 
 ### Selective Sync Benefits
 
-✅ **Isolated Deployments**: Changes to dev won't trigger production syncs  
-✅ **Reduced Noise**: No unnecessary sync operations  
+✅ **Isolated Deployments**: Changes to dev won't trigger production syncs
+✅ **Reduced Noise**: No unnecessary sync operations
 ✅ **Environment-Specific Hooks**: Post-sync tests only run for changed environments
 
 ## 🎯 Usage
@@ -144,7 +144,7 @@ git push
 
 # Update multiple environments
 vim staging/deployment.yaml
-vim production/service.yaml  
+vim production/service.yaml
 git add staging/ production/
 git commit -m "Update staging and production"
 git push
@@ -161,7 +161,7 @@ kubectl get applications -n argocd
 
 # Check specific environment deployments
 kubectl get all -n argocd-demo-app-dev
-kubectl get all -n argocd-demo-app-staging  
+kubectl get all -n argocd-demo-app-staging
 kubectl get all -n argocd-demo-app-production
 ```
 
@@ -171,7 +171,7 @@ kubectl get all -n argocd-demo-app-production
 # Access development environment
 kubectl port-forward svc/argocd-demo-app-service -n argocd-demo-app-dev 8080:8080
 
-# Access staging environment  
+# Access staging environment
 kubectl port-forward svc/argocd-demo-app-service -n argocd-demo-app-staging 8081:8080
 
 # Access production environment
@@ -188,7 +188,7 @@ This repository implements **selective syncing** - a key improvement over tradit
 | ❌ Changes anywhere trigger all syncs | ✅ Only affected environments sync |
 | ❌ All post-sync hooks fire on any change | ✅ Environment-specific hooks only |
 | ❌ Higher resource usage and noise | ✅ Efficient, targeted deployments |
-```
+
 
 > 📚 **Learn more**: See [SELECTIVE_SYNC_README.md](SELECTIVE_SYNC_README.md) for detailed implementation guide
 
