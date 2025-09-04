@@ -5,8 +5,13 @@ metadata:
   namespace: argocd
 spec:
   generators:
-  - directories:
-      path: .argocd/*
+  - git:
+      repoURL: https://github.com/nicholasadamou/argocd-app-config.git
+      revision: HEAD
+      directories:
+      - path: staging
+      - path: production
+      - path: dev
   template:
     metadata:
       name: 'argocd-demo-app-{{path.basename}}'
