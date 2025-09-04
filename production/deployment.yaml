@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-demo-app
+spec:
+  selector:
+    matchLabels:
+      app: argocd-demo-app
+  replicas: 5  # High availability for production
+  template:
+    metadata:
+      labels:
+        app: argocd-demo-app
+        environment: production
+    spec:
+      containers:
+      - name: argocd-demo-app
+        image: nanajanashia/argocd-app:1.2
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"

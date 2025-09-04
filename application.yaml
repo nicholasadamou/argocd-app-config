@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: argocd-demo-app-set
+  namespace: argocd
+spec:
+  generators:
+  - directories:
+      path: .argocd/*
+  template:
+    metadata:
+      name: 'argocd-demo-app-{{path.basename}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/nicholasadamou/argocd-app-config.git
+        targetRevision: HEAD
+        path: '{{path.basename}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'argocd-demo-app-{{path.basename}}'
+      syncPolicy:
+        syncOptions:
+        - CreateNamespace=true
+        automated:
+          selfHeal: true
+          prune: true

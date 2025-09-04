@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-demo-app
+spec:
+  selector:
+    matchLabels:
+      app: argocd-demo-app
+  replicas: 3  # More replicas for staging
+  template:
+    metadata:
+      labels:
+        app: argocd-demo-app
+        environment: staging
+    spec:
+      containers:
+      - name: argocd-demo-app
+        image: nanajanashia/argocd-app:1.2
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENVIRONMENT
+          value: "staging"
