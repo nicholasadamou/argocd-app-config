@@ -21,10 +21,12 @@ spec:
         env:
         - name: ENVIRONMENT
           value: "production"
+        - name: JAVA_OPTS
+          value: "-Xmx400m -Xms200m -XX:+UseG1GC -XX:+UseContainerSupport"
         resources:
           requests:
-            memory: "128Mi"
+            memory: "256Mi"
             cpu: "100m"
           limits:
-            memory: "256Mi"
+            memory: "512Mi"
             cpu: "200m"
