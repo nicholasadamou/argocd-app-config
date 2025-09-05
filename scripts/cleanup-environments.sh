@@ -94,7 +94,7 @@ cleanup_argocd_app() {
     local dry_run=${2:-false}
     
     if [ "$dry_run" = "true" ]; then
-        if kubectl get application "$app_name" -n argocd &> /environments/dev/null; then
+        if kubectl get application "$app_name" -n argocd &> /dev/null; then
             echo "[DRY RUN] Would delete ArgoCD application: $app_name"
         fi
         return
@@ -102,7 +102,7 @@ cleanup_argocd_app() {
     
     log_info "Cleaning up ArgoCD application: $app_name"
     
-    if kubectl get application "$app_name" -n argocd &> /environments/dev/null; then
+    if kubectl get application "$app_name" -n argocd &> /dev/null; then
         # Delete the application (this will also clean up deployed resources)
         kubectl delete application "$app_name" -n argocd
         log_success "Deleted ArgoCD application: $app_name"
@@ -113,12 +113,12 @@ cleanup_argocd_app() {
         local timeout=60
         local elapsed=0
         
-        while kubectl get namespace "$namespace" &> /environments/dev/null && [ $elapsed -lt $timeout ]; do
+        while kubectl get namespace "$namespace" &> /dev/null && [ $elapsed -lt $timeout ]; do
             sleep 2
             elapsed=$((elapsed + 2))
         done
         
-        if kubectl get namespace "$namespace" &> /environments/dev/null; then
+        if kubectl get namespace "$namespace" &> /dev/null; then
             log_warning "Namespace $namespace still exists after $timeout seconds"
             log_info "You may need to manually clean it up"
         else
@@ -311,12 +311,12 @@ main() {
         # No need for kubectl if only cleaning manifest files
         :
     else
-        if ! command -v kubectl &> /environments/dev/null; then
+        if ! command -v kubectl &> /dev/null; then
             log_error "kubectl is not installed or not in PATH"
             exit 1
         fi
         
-        if ! kubectl cluster-info &> /environments/dev/null; then
+        if ! kubectl cluster-info &> /dev/null; then
             log_error "Cannot connect to Kubernetes cluster"
             exit 1
         fi

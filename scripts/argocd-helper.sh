@@ -198,13 +198,13 @@ sync_application() {
     log_info "Force syncing application: $app_name"
     
     # Check if kubectl is available
-    if ! command -v kubectl &> /environments/dev/null; then
+    if ! command -v kubectl &> /dev/null; then
         log_error "kubectl is not installed"
         return 1
     fi
     
     # Check if application exists
-    if ! kubectl get application "$app_name" -n argocd &> /environments/dev/null; then
+    if ! kubectl get application "$app_name" -n argocd &> /dev/null; then
         log_error "Application $app_name not found"
         return 1
     fi
@@ -233,13 +233,13 @@ port_forward() {
     echo
     
     # Check if kubectl is available
-    if ! command -v kubectl &> /environments/dev/null; then
+    if ! command -v kubectl &> /dev/null; then
         log_error "kubectl is not installed"
         return 1
     fi
     
     # Check if namespace exists
-    if ! kubectl get namespace "$namespace" &> /environments/dev/null; then
+    if ! kubectl get namespace "$namespace" &> /dev/null; then
         log_error "Namespace $namespace not found"
         log_info "Make sure the application is deployed"
         return 1
@@ -267,13 +267,13 @@ show_logs() {
     echo
     
     # Check if kubectl is available
-    if ! command -v kubectl &> /environments/dev/null; then
+    if ! command -v kubectl &> /dev/null; then
         log_error "kubectl is not installed"
         return 1
     fi
     
     # Check if namespace exists
-    if ! kubectl get namespace "$namespace" &> /environments/dev/null; then
+    if ! kubectl get namespace "$namespace" &> /dev/null; then
         log_error "Namespace $namespace not found"
         return 1
     fi

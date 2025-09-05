@@ -31,17 +31,17 @@ log_error() {
 
 # Check if kubectl is available
 check_kubectl() {
-    if ! command -v kubectl &> /environments/dev/null; then
+    if ! command -v kubectl &> /dev/null; then
         log_error "kubectl is not installed or not in PATH"
         exit 1
     fi
     
-    if ! kubectl cluster-info &> /environments/dev/null; then
+    if ! kubectl cluster-info &> /dev/null; then
         log_error "Cannot connect to Kubernetes cluster"
         exit 1
     fi
     
-    if ! kubectl get namespace argocd &> /environments/dev/null; then
+    if ! kubectl get namespace argocd &> /dev/null; then
         log_error "ArgoCD namespace not found"
         exit 1
     fi
@@ -52,7 +52,7 @@ delete_applicationsets() {
     log_info "Deleting all ApplicationSets..."
     
     local appsets
-    appsets=$(kubectl get applicationsets -n argocd -o name 2>/environments/dev/null | wc -l || echo "0")
+    appsets=$(kubectl get applicationsets -n argocd -o name 2>/dev/null | wc -l || echo "0")
     
     if [ "$appsets" -gt 0 ]; then
         kubectl get applicationsets -n argocd -o name | while read -r appset; do
@@ -72,7 +72,7 @@ delete_applications() {
     log_info "Deleting all ArgoCD Applications..."
     
     local apps
-    apps=$(kubectl get applications -n argocd -o name 2>/environments/dev/null | wc -l || echo "0")
+    apps=$(kubectl get applications -n argocd -o name 2>/dev/null | wc -l || echo "0")
     
     if [ "$apps" -gt 0 ]; then
         kubectl get applications -n argocd -o name | while read -r app; do
@@ -89,7 +89,7 @@ delete_applications() {
         
         while [ $elapsed -lt $timeout ]; do
             local remaining
-            remaining=$(kubectl get applications -n argocd --no-headers 2>/environments/dev/null | wc -l || echo "0")
+            remaining=$(kubectl get applications -n argocd --no-headers 2>/dev/null | wc -l || echo "0")
             if [ "$remaining" -eq 0 ]; then
                 break
             fi
@@ -112,7 +112,7 @@ cleanup_app_namespaces() {
     local old_namespaces=("argocd-demo-app-dev" "argocd-demo-app-staging" "argocd-demo-app-production")
     
     for ns in "${old_namespaces[@]}"; do
-        if kubectl get namespace "$ns" &> /environments/dev/null; then
+        if kubectl get namespace "$ns" &> /dev/null; then
             log_info "Deleting namespace: $ns"
             kubectl delete namespace "$ns" --timeout=60s || log_warning "Timeout deleting $ns, it may still be terminating"
         fi
@@ -122,7 +122,7 @@ cleanup_app_namespaces() {
     local per_app_namespaces=("dev-demo-app" "dev-api-service" "staging-demo-app" "staging-api-service" "production-demo-app" "production-api-service")
     
     for ns in "${per_app_namespaces[@]}"; do
-        if kubectl get namespace "$ns" &> /environments/dev/null; then
+        if kubectl get namespace "$ns" &> /dev/null; then
             log_info "Deleting namespace: $ns"
             kubectl delete namespace "$ns" --timeout=60s || log_warning "Timeout deleting $ns, it may still be terminating"
         fi
@@ -130,7 +130,7 @@ cleanup_app_namespaces() {
     
     # Clean up any other demo/test namespaces
     local other_namespaces
-    other_namespaces=$(kubectl get namespaces -o name 2>/environments/dev/null | grep -E "(demo|test|qa|uat)" | cut -d'/' -f2 || echo "")
+    other_namespaces=$(kubectl get namespaces -o name 2>/dev/null | grep -E "(demo|test|qa|uat)" | cut -d'/' -f2 || echo "")
     
     if [ -n "$other_namespaces" ]; then
         log_info "Found additional demo/test namespaces to clean up:"
@@ -154,7 +154,7 @@ wait_for_namespace_cleanup() {
     
     while [ $elapsed -lt $timeout ]; do
         local terminating
-        terminating=$(kubectl get namespaces --no-headers 2>/environments/dev/null | grep -E "(demo|test|qa|uat|Terminating)" | wc -l || echo "0")
+        terminating=$(kubectl get namespaces --no-headers 2>/dev/null | grep -E "(demo|test|qa|uat|Terminating)" | wc -l || echo "0")
         
         if [ "$terminating" -eq 0 ]; then
             log_success "All namespaces fully terminated"
@@ -162,7 +162,7 @@ wait_for_namespace_cleanup() {
         fi
         
         log_info "Waiting for $terminating namespaces to terminate..."
-        kubectl get namespaces --no-headers 2>/environments/dev/null | grep Terminating || true
+        kubectl get namespaces --no-headers 2>/dev/null | grep Terminating || true
         sleep 10
         elapsed=$((elapsed + 10))
     done
@@ -178,7 +178,7 @@ show_status() {
     
     log_info "ArgoCD Applications:"
     local apps
-    apps=$(kubectl get applications -n argocd --no-headers 2>/environments/dev/null | wc -l || echo "0")
+    apps=$(kubectl get applications -n argocd --no-headers 2>/dev/null | wc -l || echo "0")
     if [ "$apps" -eq 0 ]; then
         echo "  ✅ No applications found"
     else
@@ -188,7 +188,7 @@ show_status() {
     echo
     log_info "ApplicationSets:"
     local appsets
-    appsets=$(kubectl get applicationsets -n argocd --no-headers 2>/environments/dev/null | wc -l || echo "0")
+    appsets=$(kubectl get applicationsets -n argocd --no-headers 2>/dev/null | wc -l || echo "0")
     if [ "$appsets" -eq 0 ]; then
         echo "  ✅ No ApplicationSets found"
     else
@@ -198,7 +198,7 @@ show_status() {
     echo
     log_info "Application Namespaces:"
     local app_namespaces
-    app_namespaces=$(kubectl get namespaces --no-headers 2>/environments/dev/null | grep -E "(demo|test|qa|uat)" | wc -l || echo "0")
+    app_namespaces=$(kubectl get namespaces --no-headers 2>/dev/null | grep -E "(demo|test|qa|uat)" | wc -l || echo "0")
     if [ "$app_namespaces" -eq 0 ]; then
         echo "  ✅ No application namespaces found"
     else

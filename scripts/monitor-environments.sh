@@ -35,7 +35,7 @@ log_error() {
 get_sync_status() {
     local app=$1
     local status
-    status=$(kubectl get application "$app" -n argocd -o jsonpath='{.status.sync.status}' 2>/environments/dev/null || echo "Unknown")
+    status=$(kubectl get application "$app" -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
     
     case "$status" in
         "Synced")
@@ -57,7 +57,7 @@ get_sync_status() {
 get_health_status() {
     local app=$1
     local status
-    status=$(kubectl get application "$app" -n argocd -o jsonpath='{.status.health.status}' 2>/environments/dev/null || echo "Unknown")
+    status=$(kubectl get application "$app" -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
     
     case "$status" in
         "Healthy")
@@ -82,11 +82,11 @@ get_health_status() {
 get_last_sync() {
     local app=$1
     local sync_time
-    sync_time=$(kubectl get application "$app" -n argocd -o jsonpath='{.status.operationState.finishedAt}' 2>/environments/dev/null || echo "")
+    sync_time=$(kubectl get application "$app" -n argocd -o jsonpath='{.status.operationState.finishedAt}' 2>/dev/null || echo "")
     
     if [ -n "$sync_time" ]; then
         # Convert to local time and format
-        date -d "$sync_time" "+%Y-%m-%d %H:%M:%S" 2>/environments/dev/null || echo "$sync_time"
+        date -d "$sync_time" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "$sync_time"
     else
         echo "Never"
     fi
@@ -95,8 +95,8 @@ get_last_sync() {
 # Get resource count for namespace
 get_resource_count() {
     local namespace=$1
-    if kubectl get namespace "$namespace" &> /environments/dev/null; then
-        kubectl get all -n "$namespace" --no-headers 2>/environments/dev/null | wc -l || echo "0"
+    if kubectl get namespace "$namespace" &> /dev/null; then
+        kubectl get all -n "$namespace" --no-headers 2>/dev/null | wc -l || echo "0"
     else
         echo "0"
     fi
@@ -111,7 +111,7 @@ show_application_details() {
     echo -e "${PURPLE}🚀 Application: ${YELLOW}$app${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     
-    if kubectl get application "$app" -n argocd &> /environments/dev/null; then
+    if kubectl get application "$app" -n argocd &> /dev/null; then
         local sync_status health_status last_sync resource_count
         sync_status=$(get_sync_status "$app")
         health_status=$(get_health_status "$app")
@@ -127,7 +127,7 @@ show_application_details() {
         
         # Show recent events if available
         local events
-        events=$(kubectl get events -n argocd --field-selector involvedObject.name="$app" --sort-by='.lastTimestamp' -o custom-columns="TIME:.lastTimestamp,REASON:.reason,MESSAGE:.message" --no-headers 2>/environments/dev/null | tail -3)
+        events=$(kubectl get events -n argocd --field-selector involvedObject.name="$app" --sort-by='.lastTimestamp' -o custom-columns="TIME:.lastTimestamp,REASON:.reason,MESSAGE:.message" --no-headers 2>/dev/null | tail -3)
         if [ -n "$events" ]; then
             echo
             echo -e "${BLUE}Recent Events:${NC}"
@@ -137,10 +137,10 @@ show_application_details() {
         fi
         
         # Show pod status if namespace exists
-        if kubectl get namespace "$namespace" &> /environments/dev/null; then
+        if kubectl get namespace "$namespace" &> /dev/null; then
             echo
             echo -e "${BLUE}Pod Status:${NC}"
-            kubectl get pods -n "$namespace" -o wide 2>/environments/dev/null || echo "  No pods found"
+            kubectl get pods -n "$namespace" -o wide 2>/dev/null || echo "  No pods found"
         fi
         
     else
@@ -163,7 +163,7 @@ show_summary_table() {
     for app in "${apps[@]}"; do
         local namespace="$app"
         
-        if kubectl get application "$app" -n argocd &> /environments/dev/null; then
+        if kubectl get application "$app" -n argocd &> /dev/null; then
             local sync_status health_status last_sync resource_count
             sync_status=$(get_sync_status "$app")
             health_status=$(get_health_status "$app")
@@ -243,13 +243,13 @@ main() {
     done
     
     # Check if kubectl is available
-    if ! command -v kubectl &> /environments/dev/null; then
+    if ! command -v kubectl &> /dev/null; then
         log_error "kubectl is not installed or not in PATH"
         exit 1
     fi
     
     # Check cluster connectivity
-    if ! kubectl cluster-info &> /environments/dev/null; then
+    if ! kubectl cluster-info &> /dev/null; then
         log_error "Cannot connect to Kubernetes cluster"
         exit 1
     fi
