@@ -10,24 +10,39 @@ spec:
       - name: dev-demo-app
         path: dev/demo-app
         namespace: dev-demo-app
+        environment: dev
+        service: demo-app
       - name: dev-api-service
         path: dev/api-service
         namespace: dev-api-service
+        environment: dev
+        service: api-service
       - name: staging-demo-app
         path: staging/demo-app
         namespace: staging-demo-app
+        environment: staging
+        service: demo-app
       - name: staging-api-service
         path: staging/api-service
         namespace: staging-api-service
+        environment: staging
+        service: api-service
       - name: production-demo-app
         path: production/demo-app
         namespace: production-demo-app
+        environment: production
+        service: demo-app
       - name: production-api-service
         path: production/api-service
         namespace: production-api-service
+        environment: production
+        service: api-service
   template:
     metadata:
       name: '{{name}}'
+      labels:
+        environment: '{{environment}}'
+        service: '{{service}}'
     spec:
       project: default
       source:
