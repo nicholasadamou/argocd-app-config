@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/nicholasadamou/argocd-app-config.git
     targetRevision: HEAD
-    path: staging/api-service
+    path: environments/staging/api-service
   destination: 
     server: https://kubernetes.default.svc
     namespace: staging-api-service

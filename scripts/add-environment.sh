@@ -73,7 +73,7 @@ validate_environment_name() {
     fi
     
     # Check if environment already exists (check for per-app structure)
-    if [ -d "$PROJECT_ROOT/$env_name" ]; then
+    if [ -d "$PROJECT_ROOT/environments/$env_name" ]; then
         log_error "Environment '$env_name' already exists"
         exit 1
     fi
@@ -90,11 +90,11 @@ create_environment_manifests() {
     log_info "Creating per-app environment manifests for '$env_name'..."
     
     # Create environment directory with per-app subdirectories
-    mkdir -p "$PROJECT_ROOT/$env_name/demo-app"
-    mkdir -p "$PROJECT_ROOT/$env_name/api-service"
+    mkdir -p "$PROJECT_ROOT/environments/$env_name/demo-app"
+    mkdir -p "$PROJECT_ROOT/environments/$env_name/api-service"
     
     # Create demo-app deployment.yaml
-    cat > "$PROJECT_ROOT/$env_name/demo-app/deployment.yaml" << EOF
+    cat > "$PROJECT_ROOT/environments/$env_name/demo-app/deployment.yaml" << EOF
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -122,7 +122,7 @@ EOF
 
     # Add resource limits for production-like environments
     if [[ "$env_name" == "prod"* ]] || [[ "$env_name" == "production"* ]]; then
-        cat >> "$PROJECT_ROOT/$env_name/demo-app/deployment.yaml" << EOF
+        cat >> "$PROJECT_ROOT/environments/$env_name/demo-app/deployment.yaml" << EOF
         resources:
           requests:
             memory: "128Mi"
@@ -134,7 +134,7 @@ EOF
     fi
     
     # Create demo-app service.yaml
-    cat > "$PROJECT_ROOT/$env_name/demo-app/service.yaml" << EOF
+    cat > "$PROJECT_ROOT/environments/$env_name/demo-app/service.yaml" << EOF
 apiVersion: v1
 kind: Service
 metadata:
@@ -151,7 +151,7 @@ EOF
 
     # Create api-service deployment.yaml
     local api_replicas=$((replicas > 1 ? replicas - 1 : 1))
-    cat > "$PROJECT_ROOT/$env_name/api-service/deployment.yaml" << EOF
+    cat > "$PROJECT_ROOT/environments/$env_name/api-service/deployment.yaml" << EOF
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -179,7 +179,7 @@ EOF
 
     # Add resource limits for production-like api-service
     if [[ "$env_name" == "prod"* ]] || [[ "$env_name" == "production"* ]]; then
-        cat >> "$PROJECT_ROOT/$env_name/api-service/deployment.yaml" << EOF
+        cat >> "$PROJECT_ROOT/environments/$env_name/api-service/deployment.yaml" << EOF
         resources:
           requests:
             memory: "64Mi"
@@ -191,7 +191,7 @@ EOF
     fi
     
     # Create api-service service.yaml
-    cat > "$PROJECT_ROOT/$env_name/api-service/service.yaml" << EOF
+    cat > "$PROJECT_ROOT/environments/$env_name/api-service/service.yaml" << EOF
 apiVersion: v1
 kind: Service
 metadata:

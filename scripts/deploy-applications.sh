@@ -39,19 +39,19 @@ check_prerequisites() {
     log_info "Checking prerequisites..."
     
     # Check kubectl
-    if ! command -v kubectl &> /dev/null; then
+    if ! command -v kubectl &> /environments/dev/null; then
         log_error "kubectl is not installed or not in PATH"
         exit 1
     fi
     
     # Check cluster connectivity
-    if ! kubectl cluster-info &> /dev/null; then
+    if ! kubectl cluster-info &> /environments/dev/null; then
         log_error "Cannot connect to Kubernetes cluster"
         exit 1
     fi
     
     # Check if ArgoCD is installed
-    if ! kubectl get namespace argocd &> /dev/null; then
+    if ! kubectl get namespace argocd &> /environments/dev/null; then
         log_error "ArgoCD namespace not found. Please install ArgoCD first."
         log_info "Run: ./scripts/install-argocd.sh"
         exit 1
@@ -87,7 +87,7 @@ wait_for_applications() {
         local found_apps=0
         
         for app in "${expected_apps[@]}"; do
-            if kubectl get application "$app" -n argocd &> /dev/null; then
+            if kubectl get application "$app" -n argocd &> /environments/dev/null; then
                 ((found_apps++))
             fi
         done
@@ -121,10 +121,10 @@ show_application_status() {
     
     for app in "${apps[@]}"; do
         echo "🔍 Application: $app"
-        if kubectl get application "$app" -n argocd &> /dev/null; then
+        if kubectl get application "$app" -n argocd &> /environments/dev/null; then
             local sync_status health_status
-            sync_status=$(kubectl get application "$app" -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
-            health_status=$(kubectl get application "$app" -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
+            sync_status=$(kubectl get application "$app" -n argocd -o jsonpath='{.status.sync.status}' 2>/environments/dev/null || echo "Unknown")
+            health_status=$(kubectl get application "$app" -n argocd -o jsonpath='{.status.health.status}' 2>/environments/dev/null || echo "Unknown")
             
             echo "  Sync Status: $sync_status"
             echo "  Health Status: $health_status"
@@ -144,10 +144,10 @@ show_namespace_status() {
     
     for ns in "${namespaces[@]}"; do
         echo "🌐 Namespace: $ns"
-        if kubectl get namespace "$ns" &> /dev/null; then
+        if kubectl get namespace "$ns" &> /environments/dev/null; then
             echo "  Status: Created"
             echo "  Resources:"
-            kubectl get all -n "$ns" --no-headers 2>/dev/null | wc -l | xargs echo "    Total resources:" || echo "    Total resources: 0"
+            kubectl get all -n "$ns" --no-headers 2>/environments/dev/null | wc -l | xargs echo "    Total resources:" || echo "    Total resources: 0"
         else
             echo "  Status: Not created yet"
         fi

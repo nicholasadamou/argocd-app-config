@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/nicholasadamou/argocd-app-config.git
     targetRevision: HEAD
-    path: staging/demo-app
+    path: environments/staging/demo-app
   destination: 
     server: https://kubernetes.default.svc
     namespace: staging-demo-app

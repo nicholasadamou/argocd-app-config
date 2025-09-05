@@ -19,27 +19,28 @@ This repository implements **per-application selective syncing** in ArgoCD. This
 │   │   └── app.yaml                   # Production demo-app application
 │   └── production-api-service/
 │       └── app.yaml                   # Production api-service application
-├── dev/                               # Dev environment manifests
-│   ├── demo-app/
-│   │   ├── deployment.yaml
-│   │   └── service.yaml
-│   └── api-service/
-│       ├── deployment.yaml
-│       └── service.yaml
-├── staging/                           # Staging environment manifests
-│   ├── demo-app/
-│   │   ├── deployment.yaml
-│   │   └── service.yaml
-│   └── api-service/
-│       ├── deployment.yaml
-│       └── service.yaml
-└── production/                        # Production environment manifests
-    ├── demo-app/
-    │   ├── deployment.yaml
-    │   └── service.yaml
-    └── api-service/
-        ├── deployment.yaml
-        └── service.yaml
+└── environments/                      # Environment-specific manifests
+    ├── dev/                          # Dev environment manifests
+    │   ├── demo-app/
+    │   │   ├── deployment.yaml
+    │   │   └── service.yaml
+    │   └── api-service/
+    │       ├── deployment.yaml
+    │       └── service.yaml
+    ├── staging/                      # Staging environment manifests
+    │   ├── demo-app/
+    │   │   ├── deployment.yaml
+    │   │   └── service.yaml
+    │   └── api-service/
+    │       ├── deployment.yaml
+    │       └── service.yaml
+    └── production/                   # Production environment manifests
+        ├── demo-app/
+        │   ├── deployment.yaml
+        │   └── service.yaml
+        └── api-service/
+            ├── deployment.yaml
+            └── service.yaml
 ```
 
 ## How Per-App Selective Sync Works
@@ -49,12 +50,12 @@ The root `application.yaml` contains an ApplicationSet that uses a directory gen
 
 ### Per-App Path Targeting
 Each generated application targets a specific app path:
-- **dev-demo-app** watches changes in `dev/demo-app/` directory only
-- **dev-api-service** watches changes in `dev/api-service/` directory only  
-- **staging-demo-app** watches changes in `staging/demo-app/` directory only
-- **staging-api-service** watches changes in `staging/api-service/` directory only
-- **production-demo-app** watches changes in `production/demo-app/` directory only
-- **production-api-service** watches changes in `production/api-service/` directory only
+- **dev-demo-app** watches changes in `environments/dev/demo-app/` directory only
+- **dev-api-service** watches changes in `environments/dev/api-service/` directory only  
+- **staging-demo-app** watches changes in `environments/staging/demo-app/` directory only
+- **staging-api-service** watches changes in `environments/staging/api-service/` directory only
+- **production-demo-app** watches changes in `environments/production/demo-app/` directory only
+- **production-api-service** watches changes in `environments/production/api-service/` directory only
 
 ### Benefits
 1. **Ultimate Isolation**: Changes to one app won't trigger syncs for any other app
@@ -75,8 +76,8 @@ Each generated application targets a specific app path:
 ### Scenario 1: Update Only Dev Demo-App
 ```bash
 # Modify only the dev demo-app
-vim dev/demo-app/deployment.yaml
-git add dev/demo-app/deployment.yaml
+vim environments/dev/demo-app/deployment.yaml
+git add environments/dev/demo-app/deployment.yaml
 git commit -m "Update dev demo-app replicas"
 git push
 ```
@@ -85,8 +86,8 @@ git push
 ### Scenario 2: Update Production API Service
 ```bash
 # Modify only production api-service
-vim production/api-service/deployment.yaml  
-git add production/api-service/deployment.yaml
+vim environments/production/api-service/deployment.yaml  
+git add environments/production/api-service/deployment.yaml
 git commit -m "Scale production api-service"
 git push
 ```
@@ -95,9 +96,9 @@ git push
 ### Scenario 3: Update Same App Across Environments
 ```bash
 # Modify demo-app in both staging and production
-vim staging/demo-app/deployment.yaml
-vim production/demo-app/deployment.yaml
-git add staging/demo-app/ production/demo-app/
+vim environments/staging/demo-app/deployment.yaml
+vim environments/production/demo-app/deployment.yaml
+git add environments/staging/demo-app/ environments/production/demo-app/
 git commit -m "Update demo-app across environments"
 git push
 ```
@@ -106,9 +107,9 @@ git push
 ### Scenario 4: Update Multiple Apps in One Environment
 ```bash
 # Update both apps in dev environment
-vim dev/demo-app/service.yaml
-vim dev/api-service/deployment.yaml
-git add dev/
+vim environments/dev/demo-app/service.yaml
+vim environments/dev/api-service/deployment.yaml
+git add environments/dev/
 git commit -m "Update dev services"
 git push
 ```

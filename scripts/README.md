@@ -145,7 +145,7 @@ chmod +x scripts/*.sh
 ./scripts/argocd-helper.sh add-env uat --replicas 3
 
 # 2. Commit changes
-git add uat/ .argocd/uat/
+git add environments/uat/ .argocd/uat/
 git commit -m "Add UAT environment"
 git push
 

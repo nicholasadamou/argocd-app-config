@@ -31,7 +31,7 @@ log_error() {
 
 # Check if kubectl is installed
 check_kubectl() {
-    if ! command -v kubectl &> /dev/null; then
+    if ! command -v kubectl &> /environments/dev/null; then
         log_error "kubectl is not installed or not in PATH"
         exit 1
     fi
@@ -41,7 +41,7 @@ check_kubectl() {
 # Check if we can connect to the cluster
 check_cluster() {
     log_info "Checking cluster connectivity..."
-    if ! kubectl cluster-info &> /dev/null; then
+    if ! kubectl cluster-info &> /environments/dev/null; then
         log_error "Cannot connect to Kubernetes cluster"
         log_error "Please ensure kubectl is configured correctly"
         exit 1
@@ -78,7 +78,7 @@ get_admin_password() {
     
     # Get the password
     local password
-    password=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" 2>/dev/null | base64 --decode 2>/dev/null || echo "")
+    password=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" 2>/environments/dev/null | base64 --decode 2>/environments/dev/null || echo "")
     
     if [ -n "$password" ]; then
         echo

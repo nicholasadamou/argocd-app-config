@@ -24,27 +24,28 @@ This repository contains Kubernetes manifests and ArgoCD application configurati
 │   │   └── app.yaml                   # Production demo-app with comprehensive checks
 │   └── production-api-service/
 │       └── app.yaml                   # Production api-service with load balancer validation
-├── dev/                               # Development environment manifests
-│   ├── demo-app/                      # Demo application
-│   │   ├── deployment.yaml           # Kubernetes Deployment
-│   │   └── service.yaml              # Kubernetes Service
-│   └── api-service/                   # API service application
-│       ├── deployment.yaml           # Kubernetes Deployment
-│       └── service.yaml              # Kubernetes Service
-├── staging/                           # Staging environment manifests
-│   ├── demo-app/
-│   │   ├── deployment.yaml
-│   │   └── service.yaml
-│   └── api-service/
-│       ├── deployment.yaml
-│       └── service.yaml
-├── production/                        # Production environment manifests
-│   ├── demo-app/
-│   │   ├── deployment.yaml
-│   │   └── service.yaml
-│   └── api-service/
-│       ├── deployment.yaml
-│       └── service.yaml
+├── environments/                      # Environment-specific manifests
+│   ├── dev/                          # Development environment
+│   │   ├── demo-app/                 # Demo application
+│   │   │   ├── deployment.yaml      # Kubernetes Deployment
+│   │   │   └── service.yaml         # Kubernetes Service
+│   │   └── api-service/              # API service application
+│   │       ├── deployment.yaml      # Kubernetes Deployment
+│   │       └── service.yaml         # Kubernetes Service
+│   ├── staging/                      # Staging environment
+│   │   ├── demo-app/
+│   │   │   ├── deployment.yaml
+│   │   │   └── service.yaml
+│   │   └── api-service/
+│   │       ├── deployment.yaml
+│   │       └── service.yaml
+│   └── production/                   # Production environment
+│       ├── demo-app/
+│       │   ├── deployment.yaml
+│       │   └── service.yaml
+│       └── api-service/
+│           ├── deployment.yaml
+│           └── service.yaml
 └── scripts/                           # Helpful management scripts
     ├── README.md                      # Scripts documentation
     ├── argocd-helper.sh               # Main helper script (recommended)
@@ -128,10 +129,11 @@ kubectl apply -f application.yaml
 
 This file defines an ApplicationSet that manages multiple applications with **per-app selective syncing**:
 
-- **Generator**: Uses directory generator to scan for individual app directories (`dev/demo-app/`, `dev/api-service/`, etc.)
+- **Generator**: Uses matrix generator to create apps from environment × service combinations
 - **Source Repository**: Points to this GitHub repository
-- **Per-App Targeting**: Each ArgoCD Application watches only its specific app directory
+- **Per-App Targeting**: Each ArgoCD Application watches only its specific path (`environments/dev/demo-app/`, etc.)
 - **Namespaces**: Each app deploys to its own namespace (`dev-demo-app`, `dev-api-service`, etc.)
+- **Environment Labels**: Applications are labeled with environment and service for easy filtering
 - **Individual Sync Policies**: Each app can have different sync policies and automation settings
 
 ### Per-App Manifests
@@ -166,7 +168,7 @@ Each individual application has its own custom post-sync validation:
 
 ### Per-App Selective Updates
 
-1. **Make changes** to manifests in a specific app directory (`dev/demo-app/`, `production/api-service/`, etc.)
+1. **Make changes** to manifests in a specific app directory (`environments/dev/demo-app/`, `environments/production/api-service/`, etc.)
 2. **Commit and push** changes to this repository
 3. **Only the affected app syncs** - all other apps remain untouched
 4. **Only that app's post-sync hook runs** - targeted validation
@@ -176,25 +178,25 @@ Each individual application has its own custom post-sync validation:
 
 ```bash
 # Update only dev demo-app
-vim dev/demo-app/deployment.yaml
-git add dev/demo-app/
+vim environments/dev/demo-app/deployment.yaml
+git add environments/dev/demo-app/
 git commit -m "Scale dev demo-app to 3 replicas"
 git push
 # Result: Only dev-demo-app syncs and runs dev-demo-app-post-sync hook
 #         dev-api-service and all other apps remain untouched
 
 # Update only production api-service
-vim production/api-service/deployment.yaml
-git add production/api-service/
+vim environments/production/api-service/deployment.yaml
+git add environments/production/api-service/
 git commit -m "Update production api-service image"
 git push
 # Result: Only production-api-service syncs and runs comprehensive validation
 #         production-demo-app and all other apps remain untouched
 
 # Update same app across environments
-vim staging/demo-app/service.yaml
-vim production/demo-app/service.yaml
-git add staging/demo-app/ production/demo-app/
+vim environments/staging/demo-app/service.yaml
+vim environments/production/demo-app/service.yaml
+git add environments/staging/demo-app/ environments/production/demo-app/
 git commit -m "Update demo-app service configuration"
 git push
 # Result: staging-demo-app and production-demo-app sync independently

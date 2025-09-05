@@ -27,7 +27,7 @@ spec:
       source:
         repoURL: https://github.com/nicholasadamou/argocd-app-config.git
         targetRevision: HEAD
-        path: '{{environment}}/{{service}}'
+        path: 'environments/{{environment}}/{{service}}'
       destination:
         server: https://kubernetes.default.svc
         namespace: '{{environment}}-{{service}}'
