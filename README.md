@@ -246,8 +246,6 @@ chmod +x scripts/*.sh
 
 ## 🔗 Useful Links
 
-- **Config Repository**: [https://github.com/nicholasadamou/argocd-app-config](https://github.com/nicholasadamou/argocd-app-config)
-- **Docker Repository**: [https://hub.docker.com/repository/docker/nicholasadamou/argocd-app](https://hub.docker.com/repository/docker/nicholasadamou/argocd-app)
 - **ArgoCD Documentation**: [https://argo-cd.readthedocs.io/](https://argo-cd.readthedocs.io/)
 - **ArgoCD Getting Started**: [https://argo-cd.readthedocs.io/en/stable/getting_started/](https://argo-cd.readthedocs.io/en/stable/getting_started/)
 - **GitOps Principles**: [https://www.gitops.tech/](https://www.gitops.tech/)
