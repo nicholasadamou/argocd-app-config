@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # monitor-environments.sh  
-# Script to monitor all ArgoCD environments and their sync status
+# Script to monitor all ArgoCD applications (per-app structure) and their sync status
 
 set -euo pipefail
 
@@ -105,11 +105,10 @@ get_resource_count() {
 # Show detailed application info
 show_application_details() {
     local app=$1
-    local environment=${app##*-}  # Extract environment from app name
-    local namespace="argocd-demo-app-$environment"
+    local namespace="$app"  # App name is the namespace in per-app structure
     
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${PURPLE}🚀 Environment: ${YELLOW}$environment${NC}"
+    echo -e "${PURPLE}🚀 Application: ${YELLOW}$app${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     
     if kubectl get application "$app" -n argocd &> /dev/null; then
@@ -153,16 +152,16 @@ show_application_details() {
 
 # Show summary table
 show_summary_table() {
-    log_info "Environment Summary"
+    log_info "Per-App Application Summary"
     echo
-    printf "%-12s %-15s %-15s %-20s %-10s\n" "Environment" "Sync Status" "Health Status" "Last Sync" "Resources"
-    printf "%-12s %-15s %-15s %-20s %-10s\n" "━━━━━━━━━━━" "━━━━━━━━━━━━━━" "━━━━━━━━━━━━━━" "━━━━━━━━━━━━━━━━━━━━" "━━━━━━━━━"
+    printf "%-20s %-15s %-15s %-20s %-10s\n" "Application" "Sync Status" "Health Status" "Last Sync" "Resources"
+    printf "%-20s %-15s %-15s %-20s %-10s\n" "━━━━━━━━━━━━━━━━━━━━" "━━━━━━━━━━━━━━" "━━━━━━━━━━━━━━" "━━━━━━━━━━━━━━━━━━━━" "━━━━━━━━━"
     
-    local apps=("argocd-demo-app-dev" "argocd-demo-app-staging" "argocd-demo-app-production")
+    # Define all per-app applications
+    local apps=("dev-demo-app" "dev-api-service" "staging-demo-app" "staging-api-service" "production-demo-app" "production-api-service")
     
     for app in "${apps[@]}"; do
-        local environment=${app##*-}
-        local namespace="argocd-demo-app-$environment"
+        local namespace="$app"
         
         if kubectl get application "$app" -n argocd &> /dev/null; then
             local sync_status health_status last_sync resource_count
@@ -171,9 +170,9 @@ show_summary_table() {
             last_sync=$(get_last_sync "$app")
             resource_count=$(get_resource_count "$namespace")
             
-            printf "%-12s %-25s %-25s %-20s %-10s\n" "$environment" "$sync_status" "$health_status" "$last_sync" "$resource_count"
+            printf "%-20s %-25s %-25s %-20s %-10s\n" "$app" "$sync_status" "$health_status" "$last_sync" "$resource_count"
         else
-            printf "%-12s %-15s %-15s %-20s %-10s\n" "$environment" "Not Found" "-" "-" "-"
+            printf "%-20s %-15s %-15s %-20s %-10s\n" "$app" "Not Found" "-" "-" "-"
         fi
     done
     echo
@@ -186,7 +185,7 @@ watch_mode() {
     
     while true; do
         clear
-        echo -e "${PURPLE}ArgoCD Environment Monitor - $(date)${NC}"
+        echo -e "${PURPLE}ArgoCD Per-App Monitor - $(date)${NC}"
         echo
         show_summary_table
         sleep 5
@@ -197,7 +196,7 @@ watch_mode() {
 show_help() {
     echo "Usage: $0 [OPTIONS]"
     echo
-    echo "Monitor ArgoCD applications across all environments"
+    echo "Monitor ArgoCD per-app applications across all environments"
     echo
     echo "Options:"
     echo "  -h, --help      Show this help message"
@@ -259,15 +258,15 @@ main() {
     if [ "$watch_mode_enabled" = true ]; then
         watch_mode
     elif [ "$show_details" = true ]; then
-        echo -e "${PURPLE}ArgoCD Environment Monitor - Detailed View${NC}"
+        echo -e "${PURPLE}ArgoCD Per-App Monitor - Detailed View${NC}"
         echo
         
-        local apps=("argocd-demo-app-dev" "argocd-demo-app-staging" "argocd-demo-app-production")
+        local apps=("dev-demo-app" "dev-api-service" "staging-demo-app" "staging-api-service" "production-demo-app" "production-api-service")
         for app in "${apps[@]}"; do
             show_application_details "$app"
         done
     else
-        echo -e "${PURPLE}ArgoCD Environment Monitor${NC}"
+        echo -e "${PURPLE}ArgoCD Per-App Monitor${NC}"
         echo
         show_summary_table
         

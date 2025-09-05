@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: argocd-demo-app-set
+  name: argocd-per-app-set
   namespace: argocd
 spec:
   generators:
@@ -9,21 +9,24 @@ spec:
       repoURL: https://github.com/nicholasadamou/argocd-app-config.git
       revision: HEAD
       directories:
-      - path: staging
-      - path: production
-      - path: dev
+      - path: dev/demo-app
+      - path: dev/api-service
+      - path: staging/demo-app
+      - path: staging/api-service
+      - path: production/demo-app
+      - path: production/api-service
   template:
     metadata:
-      name: 'argocd-demo-app-{{path.basename}}'
+      name: '{{path.path | replace "/" "-"}}'
     spec:
       project: default
       source:
         repoURL: https://github.com/nicholasadamou/argocd-app-config.git
         targetRevision: HEAD
-        path: '{{path.basename}}'
+        path: '{{path.path}}'
       destination:
         server: https://kubernetes.default.svc
-        namespace: 'argocd-demo-app-{{path.basename}}'
+        namespace: '{{path.path | replace "/" "-"}}'
       syncPolicy:
         syncOptions:
         - CreateNamespace=true

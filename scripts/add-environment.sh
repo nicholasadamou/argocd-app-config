@@ -37,7 +37,7 @@ log_error() {
 show_help() {
     echo "Usage: $0 <environment_name> [OPTIONS]"
     echo
-    echo "Add a new environment to the ArgoCD selective sync setup"
+    echo "Add a new environment to the ArgoCD per-app selective sync setup"
     echo
     echo "Arguments:"
     echo "  environment_name    Name of the new environment (e.g., 'qa', 'uat', 'demo')"
@@ -72,8 +72,8 @@ validate_environment_name() {
         exit 1
     fi
     
-    # Check if environment already exists
-    if [ -d "$PROJECT_ROOT/$env_name" ] || [ -d "$PROJECT_ROOT/.argocd/$env_name" ]; then
+    # Check if environment already exists (check for per-app structure)
+    if [ -d "$PROJECT_ROOT/$env_name" ]; then
         log_error "Environment '$env_name' already exists"
         exit 1
     fi
@@ -81,19 +81,20 @@ validate_environment_name() {
     log_success "Environment name '$env_name' is valid"
 }
 
-# Create environment directory and manifests
+# Create environment directory and manifests for per-app structure
 create_environment_manifests() {
     local env_name=$1
     local replicas=$2
     local service_type=$3
     
-    log_info "Creating environment manifests for '$env_name'..."
+    log_info "Creating per-app environment manifests for '$env_name'..."
     
-    # Create environment directory
-    mkdir -p "$PROJECT_ROOT/$env_name"
+    # Create environment directory with per-app subdirectories
+    mkdir -p "$PROJECT_ROOT/$env_name/demo-app"
+    mkdir -p "$PROJECT_ROOT/$env_name/api-service"
     
-    # Create deployment.yaml
-    cat > "$PROJECT_ROOT/$env_name/deployment.yaml" << EOF
+    # Create demo-app deployment.yaml
+    cat > "$PROJECT_ROOT/$env_name/demo-app/deployment.yaml" << EOF
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -121,7 +122,7 @@ EOF
 
     # Add resource limits for production-like environments
     if [[ "$env_name" == "prod"* ]] || [[ "$env_name" == "production"* ]]; then
-        cat >> "$PROJECT_ROOT/$env_name/deployment.yaml" << EOF
+        cat >> "$PROJECT_ROOT/$env_name/demo-app/deployment.yaml" << EOF
         resources:
           requests:
             memory: "128Mi"
@@ -132,8 +133,8 @@ EOF
 EOF
     fi
     
-    # Create service.yaml
-    cat > "$PROJECT_ROOT/$env_name/service.yaml" << EOF
+    # Create demo-app service.yaml
+    cat > "$PROJECT_ROOT/$env_name/demo-app/service.yaml" << EOF
 apiVersion: v1
 kind: Service
 metadata:
@@ -148,19 +149,77 @@ spec:
   type: $service_type
 EOF
 
-    log_success "Environment manifests created"
+    # Create api-service deployment.yaml
+    local api_replicas=$((replicas > 1 ? replicas - 1 : 1))
+    cat > "$PROJECT_ROOT/$env_name/api-service/deployment.yaml" << EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-service
+spec:
+  selector:
+    matchLabels:
+      app: api-service
+  replicas: $api_replicas
+  template:
+    metadata:
+      labels:
+        app: api-service
+        environment: $env_name
+    spec:
+      containers:
+      - name: api-service
+        image: nginx:1.21
+        ports:
+        - containerPort: 80
+        env:
+        - name: ENV
+          value: "$env_name"
+EOF
+
+    # Add resource limits for production-like api-service
+    if [[ "$env_name" == "prod"* ]] || [[ "$env_name" == "production"* ]]; then
+        cat >> "$PROJECT_ROOT/$env_name/api-service/deployment.yaml" << EOF
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+EOF
+    fi
+    
+    # Create api-service service.yaml
+    cat > "$PROJECT_ROOT/$env_name/api-service/service.yaml" << EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+spec:
+  selector:
+    app: api-service
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  type: ClusterIP
+EOF
+
+    log_success "Per-app environment manifests created"
 }
 
-# Create ArgoCD application definition
-create_argocd_application() {
+# Create ArgoCD application definitions for per-app structure
+create_argocd_applications() {
     local env_name=$1
     local auto_heal=$2
     local auto_sync=$3
     
-    log_info "Creating ArgoCD application definition for '$env_name'..."
+    log_info "Creating ArgoCD per-app application definitions for '$env_name'..."
     
-    # Create .argocd directory if it doesn't exist
-    mkdir -p "$PROJECT_ROOT/.argocd/$env_name"
+    # Create .argocd directories for each app
+    mkdir -p "$PROJECT_ROOT/.argocd/$env_name-demo-app"
+    mkdir -p "$PROJECT_ROOT/.argocd/$env_name-api-service"
     
     # Determine sync policy
     local automated_section=""
@@ -170,29 +229,51 @@ create_argocd_application() {
         automated_section="    # automated: false  # Manual sync required"
     fi
     
-    # Create app.yaml
-    cat > "$PROJECT_ROOT/.argocd/$env_name/app.yaml" << EOF
+    # Create demo-app ArgoCD application
+    cat > "$PROJECT_ROOT/.argocd/$env_name-demo-app/app.yaml" << EOF
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: argocd-demo-app-$env_name
+  name: $env_name-demo-app
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/nicholasadamou/argocd-app-config.git
     targetRevision: HEAD
-    path: $env_name
+    path: $env_name/demo-app
   destination: 
     server: https://kubernetes.default.svc
-    namespace: argocd-demo-app-$env_name
+    namespace: $env_name-demo-app
   syncPolicy:
     syncOptions:
     - CreateNamespace=true
 $automated_section
 EOF
 
-    log_success "ArgoCD application definition created"
+    # Create api-service ArgoCD application
+    cat > "$PROJECT_ROOT/.argocd/$env_name-api-service/app.yaml" << EOF
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: $env_name-api-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nicholasadamou/argocd-app-config.git
+    targetRevision: HEAD
+    path: $env_name/api-service
+  destination: 
+    server: https://kubernetes.default.svc
+    namespace: $env_name-api-service
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+$automated_section
+EOF
+
+    log_success "Per-app ArgoCD application definitions created"
 }
 
 # Show summary
@@ -214,17 +295,24 @@ show_summary() {
     echo "  Auto Heal:      $auto_heal"
     echo
     echo "Files created:"
-    echo "  $env_name/deployment.yaml"
-    echo "  $env_name/service.yaml"
-    echo "  .argocd/$env_name/app.yaml"
+    echo "  $env_name/demo-app/deployment.yaml"
+    echo "  $env_name/demo-app/service.yaml"
+    echo "  $env_name/api-service/deployment.yaml"
+    echo "  $env_name/api-service/service.yaml"
+    echo "  .argocd/$env_name-demo-app/app.yaml"
+    echo "  .argocd/$env_name-api-service/app.yaml"
+    echo
+    echo "Applications created:"
+    echo "  - $env_name-demo-app"
+    echo "  - $env_name-api-service"
     echo
     echo "Next steps:"
     echo "  1. Review and customize the generated manifests"
     echo "  2. Commit and push the changes:"
-    echo "     git add $env_name/ .argocd/$env_name/"
-    echo "     git commit -m \"Add $env_name environment\""
+    echo "     git add $env_name/ .argocd/$env_name-*/"
+    echo "     git commit -m \"Add $env_name environment with per-app structure\""
     echo "     git push"
-    echo "  3. The ApplicationSet will automatically detect and deploy the new environment"
+    echo "  3. The ApplicationSet will automatically detect and deploy the new per-app applications"
     echo
     echo "Monitor the deployment with:"
     echo "  ./scripts/monitor-environments.sh"
@@ -305,7 +393,7 @@ main() {
     
     validate_environment_name "$environment_name"
     create_environment_manifests "$environment_name" "$replicas" "$service_type"
-    create_argocd_application "$environment_name" "$auto_heal" "$auto_sync"
+    create_argocd_applications "$environment_name" "$auto_heal" "$auto_sync"
     show_summary "$environment_name" "$replicas" "$service_type" "$auto_heal" "$auto_sync"
 }
 

@@ -50,19 +50,19 @@ show_help() {
     echo "  install-argocd         Install ArgoCD on the current cluster"
     echo "  deploy                 Deploy the ApplicationSet and all applications"
     echo
-    echo -e "${YELLOW}Environment Management:${NC}"
-    echo "  add-env <name>         Add a new environment"
-    echo "  list-envs              List all configured environments"
-    echo "  monitor                Monitor all environments"
-    echo "  cleanup [env]          Clean up environments"
+    echo -e "${YELLOW}Application Management:${NC}"
+    echo "  add-env <name>         Add a new environment (creates per-app structure)"
+    echo "  list-apps              List all configured applications"
+    echo "  monitor                Monitor all applications"
+    echo "  cleanup [app]          Clean up applications"
     echo
     echo -e "${YELLOW}Monitoring & Status:${NC}"
     echo "  status                 Show status of all applications"
-    echo "  sync <env>             Force sync a specific environment"
-    echo "  logs <env>             Show logs for an environment"
+    echo "  sync <app>             Force sync a specific application"
+    echo "  logs <app>             Show logs for an application"
     echo
     echo -e "${YELLOW}Utilities:${NC}"
-    echo "  port-forward <env>     Port forward to an environment"
+    echo "  port-forward <app>     Port forward to an application"
     echo "  validate               Validate configuration files"
     echo "  help                   Show this help message"
     echo
@@ -72,16 +72,16 @@ show_help() {
     echo "  $0 add-env qa --replicas 3"
     echo "  $0 monitor --watch"
     echo "  $0 status"
-    echo "  $0 port-forward dev"
+    echo "  $0 port-forward dev-demo-app"
     echo
     echo -e "${CYAN}For detailed help on a specific command:${NC}"
     echo "  $0 <command> --help"
     echo
 }
 
-# List environments
-list_environments() {
-    log_info "Configured environments:"
+# List applications
+list_applications() {
+    log_info "Configured per-app applications:"
     echo
     
     if [ ! -d "$PROJECT_ROOT/.argocd" ]; then
@@ -92,25 +92,29 @@ list_environments() {
     local count=0
     for dir in "$PROJECT_ROOT"/.argocd/*/; do
         if [ -d "$dir" ]; then
-            local env_name
-            env_name=$(basename "$dir")
-            local manifest_dir="$PROJECT_ROOT/$env_name"
+            local app_name
+            app_name=$(basename "$dir")
             local status="✅"
             
+            # Extract environment and app from name (e.g., "dev-demo-app" -> "dev" and "demo-app")
+            local env_name=${app_name%%-*}
+            local service_name=${app_name#*-}
+            local manifest_dir="$PROJECT_ROOT/$env_name/$service_name"
+            
             if [ ! -d "$manifest_dir" ]; then
-                status="❌ (missing manifests)"
+                status="❌ (missing manifests at $manifest_dir)"
             fi
             
-            echo "  $status $env_name"
+            echo "  $status $app_name"
             ((count++))
         fi
     done
     
     if [ $count -eq 0 ]; then
-        log_warning "No environments found"
+        log_warning "No applications found"
     else
         echo
-        log_info "Total environments: $count"
+        log_info "Total applications: $count"
     fi
 }
 
@@ -137,38 +141,43 @@ validate_config() {
         log_success ".argocd directory found"
     fi
     
-    # Validate each environment
+    # Validate each application
     for dir in "$PROJECT_ROOT"/.argocd/*/; do
         if [ -d "$dir" ]; then
-            local env_name
-            env_name=$(basename "$dir")
-            log_info "Validating environment: $env_name"
+            local app_name
+            app_name=$(basename "$dir")
+            log_info "Validating application: $app_name"
             
             # Check ArgoCD app definition
             if [ ! -f "$dir/app.yaml" ]; then
-                log_error "  Missing .argocd/$env_name/app.yaml"
+                log_error "  Missing .argocd/$app_name/app.yaml"
                 ((errors++))
             fi
             
+            # Extract environment and service from app name
+            local env_name=${app_name%%-*}
+            local service_name=${app_name#*-}
+            local manifest_dir="$PROJECT_ROOT/$env_name/$service_name"
+            
             # Check manifest directory
-            if [ ! -d "$PROJECT_ROOT/$env_name" ]; then
-                log_error "  Missing manifest directory: $env_name/"
+            if [ ! -d "$manifest_dir" ]; then
+                log_error "  Missing manifest directory: $manifest_dir/"
                 ((errors++))
             else
                 # Check required manifests
-                if [ ! -f "$PROJECT_ROOT/$env_name/deployment.yaml" ]; then
-                    log_error "  Missing $env_name/deployment.yaml"
+                if [ ! -f "$manifest_dir/deployment.yaml" ]; then
+                    log_error "  Missing $manifest_dir/deployment.yaml"
                     ((errors++))
                 fi
                 
-                if [ ! -f "$PROJECT_ROOT/$env_name/service.yaml" ]; then
-                    log_error "  Missing $env_name/service.yaml"
+                if [ ! -f "$manifest_dir/service.yaml" ]; then
+                    log_error "  Missing $manifest_dir/service.yaml"
                     ((errors++))
                 fi
             fi
             
             if [ $errors -eq 0 ]; then
-                log_success "  Environment $env_name is valid"
+                log_success "  Application $app_name is valid"
             fi
         fi
     done
@@ -182,12 +191,11 @@ validate_config() {
     fi
 }
 
-# Force sync environment
-sync_environment() {
-    local env_name=$1
-    local app_name="argocd-demo-app-$env_name"
+# Force sync application
+sync_application() {
+    local app_name=$1
     
-    log_info "Force syncing environment: $env_name"
+    log_info "Force syncing application: $app_name"
     
     # Check if kubectl is available
     if ! command -v kubectl &> /dev/null; then
@@ -209,17 +217,17 @@ sync_environment() {
         }
     }'
     
-    log_success "Sync initiated for $env_name"
+    log_success "Sync initiated for $app_name"
     log_info "Monitor progress with: $0 monitor"
 }
 
-# Port forward to environment
+# Port forward to application
 port_forward() {
-    local env_name=$1
+    local app_name=$1
     local local_port=${2:-8080}
-    local namespace="argocd-demo-app-$env_name"
+    local namespace="$app_name"
     
-    log_info "Port forwarding to $env_name environment..."
+    log_info "Port forwarding to $app_name application..."
     log_info "Local port: $local_port"
     log_info "Press Ctrl+C to stop"
     echo
@@ -233,20 +241,29 @@ port_forward() {
     # Check if namespace exists
     if ! kubectl get namespace "$namespace" &> /dev/null; then
         log_error "Namespace $namespace not found"
-        log_info "Make sure the environment is deployed"
+        log_info "Make sure the application is deployed"
         return 1
     fi
     
-    # Port forward
-    kubectl port-forward svc/argocd-demo-app-service -n "$namespace" "$local_port:8080"
+    # Port forward - determine service name based on app
+    local service_name
+    if [[ $app_name == *"demo-app"* ]]; then
+        service_name="argocd-demo-app-service"
+    elif [[ $app_name == *"api-service"* ]]; then
+        service_name="api-service"
+    else
+        service_name="argocd-demo-app-service"  # fallback
+    fi
+    
+    kubectl port-forward "svc/$service_name" -n "$namespace" "$local_port:8080"
 }
 
-# Show environment logs
+# Show application logs
 show_logs() {
-    local env_name=$1
-    local namespace="argocd-demo-app-$env_name"
+    local app_name=$1
+    local namespace="$app_name"
     
-    log_info "Showing logs for $env_name environment..."
+    log_info "Showing logs for $app_name application..."
     echo
     
     # Check if kubectl is available
@@ -261,8 +278,17 @@ show_logs() {
         return 1
     fi
     
-    # Show logs
-    kubectl logs -n "$namespace" -l app=argocd-demo-app --tail=100 -f
+    # Show logs - determine label selector based on app type
+    local label_selector
+    if [[ $app_name == *"demo-app"* ]]; then
+        label_selector="app=argocd-demo-app"
+    elif [[ $app_name == *"api-service"* ]]; then
+        label_selector="app=api-service"
+    else
+        label_selector="app=argocd-demo-app"  # fallback
+    fi
+    
+    kubectl logs -n "$namespace" -l "$label_selector" --tail=100 -f
 }
 
 # Main function
@@ -285,8 +311,8 @@ main() {
         "add-env"|"add-environment")
             "$SCRIPT_DIR/add-environment.sh" "$@"
             ;;
-        "list-envs"|"list-environments"|"list")
-            list_environments
+        "list-apps"|"list-applications"|"list")
+            list_applications
             ;;
         "monitor")
             "$SCRIPT_DIR/monitor-environments.sh" "$@"
@@ -299,21 +325,21 @@ main() {
             ;;
         "sync")
             if [ $# -eq 0 ]; then
-                log_error "Environment name required for sync command"
+                log_error "Application name required for sync command"
                 exit 1
             fi
-            sync_environment "$1"
+            sync_application "$1"
             ;;
         "logs")
             if [ $# -eq 0 ]; then
-                log_error "Environment name required for logs command"
+                log_error "Application name required for logs command"
                 exit 1
             fi
             show_logs "$1"
             ;;
         "port-forward"|"pf")
             if [ $# -eq 0 ]; then
-                log_error "Environment name required for port-forward command"
+                log_error "Application name required for port-forward command"
                 exit 1
             fi
             port_forward "$@"

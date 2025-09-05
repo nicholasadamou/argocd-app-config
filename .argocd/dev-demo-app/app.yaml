@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-demo-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nicholasadamou/argocd-app-config.git
+    targetRevision: HEAD
+    path: dev/demo-app
+  destination: 
+    server: https://kubernetes.default.svc
+    namespace: dev-demo-app
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    automated:
+      selfHeal: true
+      prune: true
+  # Per-app post-sync hook for dev demo-app
+  operation:
+    sync:
+      hooks:
+      - name: dev-demo-app-post-sync
+        argocd.argoproj.io/hook: PostSync
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+        manifest: |
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: dev-demo-app-post-sync
+            namespace: dev-demo-app
+          spec:
+            template:
+              spec:
+                containers:
+                - name: test
+                  image: curlimages/curl
+                  command: 
+                  - /bin/sh
+                  - -c
+                  - |
+                    echo "🚀 Running post-sync tests for DEV DEMO-APP"
+                    sleep 10  # Wait for pod to be ready
+                    curl -f http://argocd-demo-app-service:8080 || exit 1
+                    echo "✅ Dev demo-app deployment verified successfully!"
+                restartPolicy: Never
+            backoffLimit: 3

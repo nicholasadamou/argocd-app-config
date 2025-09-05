@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-api-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nicholasadamou/argocd-app-config.git
+    targetRevision: HEAD
+    path: dev/api-service
+  destination: 
+    server: https://kubernetes.default.svc
+    namespace: dev-api-service
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    automated:
+      selfHeal: true
+      prune: true
+  # Per-app post-sync hook for dev api-service
+  operation:
+    sync:
+      hooks:
+      - name: dev-api-service-post-sync
+        argocd.argoproj.io/hook: PostSync
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+        manifest: |
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: dev-api-service-post-sync
+            namespace: dev-api-service
+          spec:
+            template:
+              spec:
+                containers:
+                - name: test
+                  image: curlimages/curl
+                  command: 
+                  - /bin/sh
+                  - -c
+                  - |
+                    echo "🚀 Running post-sync tests for DEV API-SERVICE"
+                    sleep 10  # Wait for pod to be ready
+                    curl -f http://api-service || exit 1
+                    echo "✅ Dev api-service deployment verified successfully!"
+                restartPolicy: Never
+            backoffLimit: 3

@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: production-api-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nicholasadamou/argocd-app-config.git
+    targetRevision: HEAD
+    path: production/api-service
+  destination: 
+    server: https://kubernetes.default.svc
+    namespace: production-api-service
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    automated:
+      selfHeal: false  # More cautious for production
+      prune: true
+  # Per-app post-sync hook for production api-service
+  operation:
+    sync:
+      hooks:
+      - name: production-api-service-validation
+        argocd.argoproj.io/hook: PostSync
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+        manifest: |
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: production-api-service-validation
+            namespace: production-api-service
+          spec:
+            template:
+              spec:
+                containers:
+                - name: validation
+                  image: curlimages/curl
+                  command: 
+                  - /bin/sh
+                  - -c
+                  - |
+                    echo "🚀 Running post-sync validation for PRODUCTION API-SERVICE"
+                    sleep 30  # Give production time to fully start
+                    
+                    # Health check
+                    curl -f http://api-service || exit 1
+                    echo "✅ Health check passed"
+                    
+                    # Load balancer check (3 replicas)
+                    for i in {1..3}; do
+                      curl -f http://api-service > /dev/null || exit 1
+                      sleep 2
+                    done
+                    echo "✅ Load balancer validation passed"
+                    
+                    echo "🎉 Production api-service deployment validated successfully!"
+                restartPolicy: Never
+            backoffLimit: 5  # More retries for production

@@ -81,7 +81,7 @@ wait_for_applications() {
     
     local max_attempts=30
     local attempt=0
-    local expected_apps=("argocd-demo-app-dev" "argocd-demo-app-staging" "argocd-demo-app-production")
+    local expected_apps=("dev-demo-app" "dev-api-service" "staging-demo-app" "staging-api-service" "production-demo-app" "production-api-service")
     
     while [ $attempt -lt $max_attempts ]; do
         local found_apps=0
@@ -117,7 +117,7 @@ show_application_status() {
     echo
     
     # Check specific applications
-    local apps=("argocd-demo-app-dev" "argocd-demo-app-staging" "argocd-demo-app-production")
+    local apps=("dev-demo-app" "dev-api-service" "staging-demo-app" "staging-api-service" "production-demo-app" "production-api-service")
     
     for app in "${apps[@]}"; do
         echo "🔍 Application: $app"
@@ -140,7 +140,7 @@ show_namespace_status() {
     log_info "Checking namespace status..."
     echo
     
-    local namespaces=("argocd-demo-app-dev" "argocd-demo-app-staging" "argocd-demo-app-production")
+    local namespaces=("dev-demo-app" "dev-api-service" "staging-demo-app" "staging-api-service" "production-demo-app" "production-api-service")
     
     for ns in "${namespaces[@]}"; do
         echo "🌐 Namespace: $ns"
@@ -164,18 +164,18 @@ show_helpful_commands() {
     echo "  kubectl get applications -n argocd -w"
     echo
     echo "🔍 Check specific application:"
-    echo "  kubectl describe application argocd-demo-app-dev -n argocd"
+    echo "  kubectl describe application dev-demo-app -n argocd"
     echo
     echo "🌐 Access applications:"
-    echo "  # Dev environment"
-    echo "  kubectl port-forward svc/argocd-demo-app-service -n argocd-demo-app-dev 8080:8080"
-    echo "  # Staging environment"
-    echo "  kubectl port-forward svc/argocd-demo-app-service -n argocd-demo-app-staging 8081:8080"
-    echo "  # Production environment"
-    echo "  kubectl port-forward svc/argocd-demo-app-service -n argocd-demo-app-production 8082:8080"
+    echo "  # Dev demo-app"
+    echo "  kubectl port-forward svc/argocd-demo-app-service -n dev-demo-app 8080:8080"
+    echo "  # Dev api-service"
+    echo "  kubectl port-forward svc/api-service -n dev-api-service 8090:80"
+    echo "  # Production demo-app"
+    echo "  kubectl port-forward svc/argocd-demo-app-service -n production-demo-app 8082:8080"
     echo
     echo "🔄 Force sync an application:"
-    echo "  kubectl patch application argocd-demo-app-dev -n argocd --type merge --patch '{\"operation\":{\"initiatedBy\":{\"username\":\"admin\"},\"sync\":{\"syncStrategy\":{\"apply\":{\"force\":true}}}}}'"
+    echo "  kubectl patch application dev-demo-app -n argocd --type merge --patch '{\"operation\":{\"initiatedBy\":{\"username\":\"admin\"},\"sync\":{\"syncStrategy\":{\"apply\":{\"force\":true}}}}}}'"
     echo
 }
 

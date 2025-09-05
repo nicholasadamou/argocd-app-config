@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: production-demo-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nicholasadamou/argocd-app-config.git
+    targetRevision: HEAD
+    path: production/demo-app
+  destination: 
+    server: https://kubernetes.default.svc
+    namespace: production-demo-app
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    automated:
+      selfHeal: false  # More cautious for production
+      prune: true
+  # Per-app post-sync hook for production demo-app
+  operation:
+    sync:
+      hooks:
+      - name: production-demo-app-validation
+        argocd.argoproj.io/hook: PostSync
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+        manifest: |
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: production-demo-app-validation
+            namespace: production-demo-app
+          spec:
+            template:
+              spec:
+                containers:
+                - name: validation
+                  image: curlimages/curl
+                  command: 
+                  - /bin/sh
+                  - -c
+                  - |
+                    echo "🚀 Running post-sync validation for PRODUCTION DEMO-APP"
+                    sleep 30  # Give production time to fully start
+                    
+                    # Health check
+                    curl -f http://argocd-demo-app-service:8080 || exit 1
+                    echo "✅ Health check passed"
+                    
+                    # Additional production validation
+                    curl -s http://argocd-demo-app-service:8080 | grep -q "Welcome" || exit 1
+                    echo "✅ Content validation passed"
+                    
+                    echo "🎉 Production demo-app deployment validated successfully!"
+                restartPolicy: Never
+            backoffLimit: 5  # More retries for production

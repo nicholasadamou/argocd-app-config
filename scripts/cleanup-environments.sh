@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # cleanup-environments.sh
-# Script to clean up ArgoCD applications and environments
+# Script to clean up ArgoCD per-app applications
 
 set -euo pipefail
 
@@ -31,25 +31,25 @@ log_error() {
 
 # Show help
 show_help() {
-    echo "Usage: $0 [OPTIONS] [environment_name]"
+    echo "Usage: $0 [OPTIONS] [app_name]"
     echo
-    echo "Clean up ArgoCD applications and environments"
+    echo "Clean up ArgoCD per-app applications"
     echo
     echo "Arguments:"
-    echo "  environment_name    Specific environment to clean up (optional)"
+    echo "  app_name           Specific application to clean up (e.g. dev-demo-app, production-api-service)"
     echo
     echo "Options:"
     echo "  -h, --help          Show this help message"
-    echo "  -a, --all           Clean up all environments"
+    echo "  -a, --all           Clean up all applications"
     echo "  -f, --force         Skip confirmation prompts"
     echo "  --apps-only         Only clean up ArgoCD applications (keep manifests)"
     echo "  --manifests-only    Only clean up manifest files (keep ArgoCD apps)"
     echo "  --dry-run           Show what would be deleted without actually deleting"
     echo
     echo "Examples:"
-    echo "  $0 qa                    # Clean up QA environment (with confirmation)"
-    echo "  $0 --all --force         # Clean up all environments without confirmation"
-    echo "  $0 staging --apps-only   # Only delete staging ArgoCD application"
+    echo "  $0 dev-demo-app          # Clean up dev demo app (with confirmation)"
+    echo "  $0 --all --force         # Clean up all applications without confirmation"
+    echo "  $0 staging-api-service --apps-only   # Only delete staging api-service ArgoCD application"
     echo "  $0 --all --dry-run       # Show what would be deleted"
 }
 
@@ -70,29 +70,28 @@ confirm_action() {
     fi
 }
 
-# Get list of environments
-get_environments() {
-    local environments=()
+# Get list of applications
+get_applications() {
+    local applications=()
     
-    # Get environments from .argocd directory
+    # Get applications from .argocd directory
     if [ -d ".argocd" ]; then
         for dir in .argocd/*/; do
             if [ -d "$dir" ]; then
-                local env_name
-                env_name=$(basename "$dir")
-                environments+=("$env_name")
+                local app_name
+                app_name=$(basename "$dir")
+                applications+=("$app_name")
             fi
         done
     fi
     
-    printf '%s\n' "${environments[@]}" | sort -u
+    printf '%s\n' "${applications[@]}" | sort -u
 }
 
 # Clean up ArgoCD application
 cleanup_argocd_app() {
-    local env_name=$1
+    local app_name=$1
     local dry_run=${2:-false}
-    local app_name="argocd-demo-app-$env_name"
     
     if [ "$dry_run" = "true" ]; then
         if kubectl get application "$app_name" -n argocd &> /dev/null; then
@@ -110,7 +109,7 @@ cleanup_argocd_app() {
         
         # Wait for resources to be cleaned up
         log_info "Waiting for resources to be cleaned up..."
-        local namespace="argocd-demo-app-$env_name"
+        local namespace="$app_name"
         local timeout=60
         local elapsed=0
         
@@ -132,103 +131,114 @@ cleanup_argocd_app() {
 
 # Clean up manifest files
 cleanup_manifests() {
-    local env_name=$1
+    local app_name=$1
     local dry_run=${2:-false}
     
+    # Extract environment and service from app name (e.g., "dev-demo-app" -> "dev" and "demo-app")
+    local env_name=${app_name%%-*}
+    local service_name=${app_name#*-}
+    local manifest_dir="$env_name/$service_name"
+    
     if [ "$dry_run" = "true" ]; then
-        if [ -d "$env_name" ]; then
-            echo "[DRY RUN] Would delete directory: $env_name/"
+        if [ -d "$manifest_dir" ]; then
+            echo "[DRY RUN] Would delete directory: $manifest_dir/"
         fi
-        if [ -d ".argocd/$env_name" ]; then
-            echo "[DRY RUN] Would delete directory: .argocd/$env_name/"
+        if [ -d ".argocd/$app_name" ]; then
+            echo "[DRY RUN] Would delete directory: .argocd/$app_name/"
         fi
         return
     fi
     
-    log_info "Cleaning up manifest files for environment: $env_name"
+    log_info "Cleaning up manifest files for application: $app_name"
     
-    # Remove environment directory
-    if [ -d "$env_name" ]; then
-        rm -rf "$env_name"
-        log_success "Deleted directory: $env_name/"
+    # Remove app manifest directory
+    if [ -d "$manifest_dir" ]; then
+        rm -rf "$manifest_dir"
+        log_success "Deleted directory: $manifest_dir/"
+        
+        # Remove environment directory if it's now empty
+        if [ -d "$env_name" ] && [ -z "$(ls -A "$env_name")" ]; then
+            rm -rf "$env_name"
+            log_success "Deleted empty environment directory: $env_name/"
+        fi
     else
-        log_warning "Directory $env_name/ not found"
+        log_warning "Directory $manifest_dir/ not found"
     fi
     
     # Remove .argocd application definition
-    if [ -d ".argocd/$env_name" ]; then
-        rm -rf ".argocd/$env_name"
-        log_success "Deleted directory: .argocd/$env_name/"
+    if [ -d ".argocd/$app_name" ]; then
+        rm -rf ".argocd/$app_name"
+        log_success "Deleted directory: .argocd/$app_name/"
     else
-        log_warning "Directory .argocd/$env_name/ not found"
+        log_warning "Directory .argocd/$app_name/ not found"
     fi
 }
 
-# Clean up single environment
-cleanup_environment() {
-    local env_name=$1
+# Clean up single application
+cleanup_application() {
+    local app_name=$1
     local apps_only=${2:-false}
     local manifests_only=${3:-false}
     local dry_run=${4:-false}
     local force=${5:-false}
     
-    log_info "Cleaning up environment: $env_name"
+    log_info "Cleaning up application: $app_name"
     
     # Confirm action
     if [ "$dry_run" = "false" ]; then
-        confirm_action "This will delete all resources for environment '$env_name'" "$force"
+        confirm_action "This will delete all resources for application '$app_name'" "$force"
     fi
     
     # Clean up ArgoCD application (unless manifests-only)
     if [ "$manifests_only" = "false" ]; then
-        cleanup_argocd_app "$env_name" "$dry_run"
+        cleanup_argocd_app "$app_name" "$dry_run"
     fi
     
     # Clean up manifest files (unless apps-only)
     if [ "$apps_only" = "false" ]; then
-        cleanup_manifests "$env_name" "$dry_run"
+        cleanup_manifests "$app_name" "$dry_run"
     fi
     
     if [ "$dry_run" = "false" ]; then
-        log_success "Environment '$env_name' cleaned up successfully"
+        log_success "Application '$app_name' cleaned up successfully"
     fi
 }
 
-# Clean up all environments
-cleanup_all_environments() {
+# Clean up all applications
+cleanup_all_applications() {
     local apps_only=${1:-false}
     local manifests_only=${2:-false}
     local dry_run=${3:-false}
     local force=${4:-false}
     
-    log_info "Cleaning up all environments"
+    log_info "Cleaning up all applications"
     
-    local environments
-    IFS=$'\n' read -rd '' -a environments <<< "$(get_environments)" || true
+    local applications
+    IFS=$'\n' read -rd '' -a applications <<< "$(get_applications)" || true
     
-    if [ ${#environments[@]} -eq 0 ]; then
-        log_warning "No environments found to clean up"
+    if [ ${#applications[@]} -eq 0 ]; then
+        log_warning "No applications found to clean up"
         return
     fi
     
-    echo "Found environments: ${environments[*]}"
+    echo "Found applications: ${applications[*]}"
     
-    # Confirm action for all environments
+    # Confirm action for all applications
     if [ "$dry_run" = "false" ]; then
-        confirm_action "This will delete ALL environments and their resources" "$force"
+        confirm_action "This will delete ALL applications and their resources" "$force"
     fi
     
-    # Clean up each environment
-    for env in "${environments[@]}"; do
+    # Clean up each application
+    for app in "${applications[@]}"; do
         echo
-        cleanup_environment "$env" "$apps_only" "$manifests_only" "$dry_run" true
+        cleanup_application "$app" "$apps_only" "$manifests_only" "$dry_run" true
     done
 }
 
 # Main function
 main() {
-    local environment_name=""
-    local all_environments=false
+    local app_name=""
+    local all_applications=false
     local apps_only=false
     local manifests_only=false
     local dry_run=false
@@ -242,7 +252,7 @@ main() {
                 exit 0
                 ;;
             -a|--all)
-                all_environments=true
+                all_applications=true
                 shift
                 ;;
             -f|--force)
@@ -267,11 +277,11 @@ main() {
                 exit 1
                 ;;
             *)
-                if [ -z "$environment_name" ]; then
-                    environment_name=$1
+                if [ -z "$app_name" ]; then
+                    app_name=$1
                     shift
                 else
-                    log_error "Multiple environment names specified"
+                    log_error "Multiple application names specified"
                     show_help
                     exit 1
                 fi
@@ -285,13 +295,13 @@ main() {
         exit 1
     fi
     
-    if [ "$all_environments" = "true" ] && [ -n "$environment_name" ]; then
-        log_error "Cannot specify both --all and a specific environment"
+    if [ "$all_applications" = "true" ] && [ -n "$app_name" ]; then
+        log_error "Cannot specify both --all and a specific application"
         exit 1
     fi
     
-    if [ "$all_environments" = "false" ] && [ -z "$environment_name" ]; then
-        log_error "Must specify either --all or a specific environment name"
+    if [ "$all_applications" = "false" ] && [ -z "$app_name" ]; then
+        log_error "Must specify either --all or a specific application name"
         show_help
         exit 1
     fi
@@ -314,7 +324,7 @@ main() {
     
     echo
     log_info "=========================================="
-    log_info "       Environment Cleanup Script"
+    log_info "      Per-App Cleanup Script"
     if [ "$dry_run" = "true" ]; then
         log_info "              (DRY RUN MODE)"
     fi
@@ -322,10 +332,10 @@ main() {
     echo
     
     # Execute cleanup
-    if [ "$all_environments" = "true" ]; then
-        cleanup_all_environments "$apps_only" "$manifests_only" "$dry_run" "$force"
+    if [ "$all_applications" = "true" ]; then
+        cleanup_all_applications "$apps_only" "$manifests_only" "$dry_run" "$force"
     else
-        cleanup_environment "$environment_name" "$apps_only" "$manifests_only" "$dry_run" "$force"
+        cleanup_application "$app_name" "$apps_only" "$manifests_only" "$dry_run" "$force"
     fi
     
     if [ "$dry_run" = "false" ]; then
@@ -336,7 +346,7 @@ main() {
             echo
             log_info "To verify cleanup in the cluster:"
             echo "  kubectl get applications -n argocd"
-            echo "  kubectl get namespaces | grep argocd-demo-app"
+            echo "  kubectl get namespaces | grep -E '(dev|staging|production)-(demo-app|api-service)'"
         fi
     fi
 }

@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: staging-api-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/nicholasadamou/argocd-app-config.git
+    targetRevision: HEAD
+    path: staging/api-service
+  destination: 
+    server: https://kubernetes.default.svc
+    namespace: staging-api-service
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    automated:
+      selfHeal: true
+      prune: true
+  # Per-app post-sync hook for staging api-service
+  operation:
+    sync:
+      hooks:
+      - name: staging-api-service-post-sync
+        argocd.argoproj.io/hook: PostSync
+        argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+        manifest: |
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: staging-api-service-post-sync
+            namespace: staging-api-service
+          spec:
+            template:
+              spec:
+                containers:
+                - name: test
+                  image: curlimages/curl
+                  command: 
+                  - /bin/sh
+                  - -c
+                  - |
+                    echo "🚀 Running post-sync tests for STAGING API-SERVICE"
+                    sleep 15
+                    curl -f http://api-service || exit 1
+                    echo "✅ Staging api-service deployment verified successfully!"
+                restartPolicy: Never
+            backoffLimit: 3
