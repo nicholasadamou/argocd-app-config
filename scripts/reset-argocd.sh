@@ -59,7 +59,7 @@ delete_applicationsets() {
             local name
             name=$(echo "$appset" | cut -d'/' -f2)
             log_info "Deleting ApplicationSet: $name"
-            kubectl delete "$appset" -n argocd
+            kubectl delete "$appset" -n argocd || log_warning "ApplicationSet $name may have already been deleted"
         done
         log_success "All ApplicationSets deleted"
     else
@@ -79,7 +79,7 @@ delete_applications() {
             local name
             name=$(echo "$app" | cut -d'/' -f2)
             log_info "Deleting Application: $name"
-            kubectl delete "$app" -n argocd
+            kubectl delete "$app" -n argocd || log_warning "Application $name may have already been deleted"
         done
         
         # Wait for applications to be fully deleted
@@ -114,7 +114,7 @@ cleanup_app_namespaces() {
     for ns in "${old_namespaces[@]}"; do
         if kubectl get namespace "$ns" &> /dev/null; then
             log_info "Deleting namespace: $ns"
-            kubectl delete namespace "$ns" --timeout=60s || log_warning "Timeout deleting $ns, it may still be terminating"
+            kubectl delete namespace "$ns" --timeout=60s || log_warning "Failed to delete namespace $ns, it may still be terminating or already deleted"
         fi
     done
     
@@ -124,7 +124,7 @@ cleanup_app_namespaces() {
     for ns in "${per_app_namespaces[@]}"; do
         if kubectl get namespace "$ns" &> /dev/null; then
             log_info "Deleting namespace: $ns"
-            kubectl delete namespace "$ns" --timeout=60s || log_warning "Timeout deleting $ns, it may still be terminating"
+            kubectl delete namespace "$ns" --timeout=60s || log_warning "Failed to delete namespace $ns, it may still be terminating or already deleted"
         fi
     done
     
@@ -137,7 +137,7 @@ cleanup_app_namespaces() {
         echo "$other_namespaces" | while read -r ns; do
             if [ -n "$ns" ]; then
                 log_info "Deleting namespace: $ns"
-                kubectl delete namespace "$ns" --timeout=60s || log_warning "Timeout deleting $ns, it may still be terminating"
+                kubectl delete namespace "$ns" --timeout=60s || log_warning "Failed to delete namespace $ns, it may still be terminating or already deleted"
             fi
         done
     fi
