@@ -11,7 +11,6 @@ This repository contains Kubernetes manifests and ArgoCD application configurati
 ├── README.md                           # This documentation
 ├── SELECTIVE_SYNC_README.md            # Detailed per-app sync documentation
 ├── application.yaml                    # ArgoCD ApplicationSet (manages all apps)
-├── test-per-app-hooks.sh              # Demo script showing per-app hook behavior
 ├── .argocd/                           # Per-app ArgoCD application definitions
 │   ├── dev-demo-app/
 │   │   └── app.yaml                   # Dev demo-app with custom post-sync hook
@@ -51,9 +50,11 @@ This repository contains Kubernetes manifests and ArgoCD application configurati
     ├── argocd-helper.sh               # Main helper script (recommended)
     ├── install-argocd.sh              # Install ArgoCD
     ├── deploy-applications.sh         # Deploy ApplicationSet
-    ├── monitor-environments.sh        # Monitor environments
-    ├── add-environment.sh             # Add new environments
-    └── cleanup-environments.sh        # Clean up environments
+    ├── monitor-environments.sh        # Monitor per-app applications
+    ├── add-environment.sh             # Add new environments (per-app structure)
+    ├── cleanup-environments.sh        # Clean up per-app applications
+    ├── test-per-app-hooks.sh          # Demo per-app hook behavior
+    └── reset-argocd.sh                # Reset ArgoCD to clean state
 ```
 
 ## 🚀 What is ArgoCD?
@@ -286,10 +287,12 @@ This repository includes a comprehensive set of scripts to make managing your Ar
 ```bash
 # Make scripts executable (first time only)
 chmod +x scripts/*.sh
-chmod +x test-per-app-hooks.sh
 
 # Demo per-app hook behavior
-./test-per-app-hooks.sh
+./scripts/test-per-app-hooks.sh
+
+# Reset ArgoCD to clean state (removes all applications)
+./scripts/reset-argocd.sh
 
 # Main helper script (shows all available commands)
 ./scripts/argocd-helper.sh help
@@ -311,11 +314,41 @@ chmod +x test-per-app-hooks.sh
 | **`argocd-helper.sh`** | **Main entry point** | `./scripts/argocd-helper.sh help` |
 | `install-argocd.sh` | Install ArgoCD | `./scripts/install-argocd.sh` |
 | `deploy-applications.sh` | Deploy ApplicationSet | `./scripts/deploy-applications.sh` |
-| `monitor-environments.sh` | Monitor sync status | `./scripts/monitor-environments.sh --watch` |
-| `add-environment.sh` | Add new environment | `./scripts/add-environment.sh qa --replicas 3` |
-| `cleanup-environments.sh` | Clean up resources | `./scripts/cleanup-environments.sh staging` |
+| `monitor-environments.sh` | Monitor per-app sync status | `./scripts/monitor-environments.sh --watch` |
+| `add-environment.sh` | Add new environment (per-app) | `./scripts/add-environment.sh qa --replicas 3` |
+| `cleanup-environments.sh` | Clean up per-app resources | `./scripts/cleanup-environments.sh dev-demo-app` |
+| `test-per-app-hooks.sh` | Demo per-app hook behavior | `./scripts/test-per-app-hooks.sh` |
+| `reset-argocd.sh` | Reset ArgoCD to clean state | `./scripts/reset-argocd.sh` |
 
 > 📄 **Full documentation**: See [scripts/README.md](scripts/README.md) for complete usage guide
+
+## 🔄 Reset ArgoCD to Clean State
+
+If you need to start fresh or clean up all applications, use the reset script:
+
+```bash
+# Reset ArgoCD to clean state (removes all applications and namespaces)
+./scripts/reset-argocd.sh
+```
+
+### What the Reset Script Does:
+- ❗ **Removes all ApplicationSets** (both old and new)
+- ❗ **Deletes all ArgoCD Applications**
+- ❗ **Cleans up all application namespaces**
+- ✅ **Preserves ArgoCD core components** (server, controller, repo-server)
+- ✅ **Keeps ArgoCD configuration and secrets**
+
+### When to Use Reset:
+- **🆕 Development**: Clean up after testing different configurations
+- **📦 Migration**: Moving from old environment-based to new per-app structure
+- **🛮 Troubleshooting**: Start fresh when applications are stuck or corrupted
+- **🧹 Maintenance**: Periodic cleanup of unused applications
+
+### After Reset:
+Your ArgoCD will be in a clean state, ready to:
+- Deploy new ApplicationSets with `./scripts/deploy-applications.sh`
+- Access ArgoCD UI with `kubectl port-forward svc/argocd-server -n argocd 8080:443`
+- Create new applications using your per-app structure
 
 ## 🎆 Per-App Features Highlight
 
@@ -337,6 +370,11 @@ This setup provides the ultimate GitOps granularity:
 - **🎯 Precision**: Failures are immediately tied to specific apps
 - **🔧 Flexibility**: Each app can have completely different validation logic
 - **🔄 Parallel Processing**: Multiple app changes can validate simultaneously
+
+### 🔄 Reset ArgoCD
+- **Complete cleanup**: Removes all Applications, ApplicationSets, and application namespaces
+- **Safe reset**: Preserves ArgoCD core components and configuration
+- **Fresh start**: Returns ArgoCD to clean state for new deployments
 ## 🔄 GitOps Workflow
 
 1. **Developer** makes changes to application code

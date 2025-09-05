@@ -1,6 +1,6 @@
 # Scripts Directory
 
-This directory contains helpful scripts for managing your ArgoCD selective sync setup.
+This directory contains helpful scripts for managing your ArgoCD per-app selective sync setup.
 
 ## 🚀 Quick Start
 
@@ -58,8 +58,10 @@ chmod +x scripts/*.sh
 
 | Script | Description |
 |--------|-------------|
-| `add-environment.sh` | Add new environments to your selective sync setup |
-| `cleanup-environments.sh` | Remove environments and clean up resources |
+| `add-environment.sh` | Add new environments with per-app structure |
+| `cleanup-environments.sh` | Remove per-app applications and clean up resources |
+| `test-per-app-hooks.sh` | Demo script showing per-app hook behavior |
+| `reset-argocd.sh` | Reset ArgoCD to clean state (removes all applications) |
 
 **Usage Examples:**
 ```bash
@@ -69,21 +71,27 @@ chmod +x scripts/*.sh
 # Add production environment with careful settings
 ./scripts/add-environment.sh prod --replicas 5 --no-auto-heal
 
-# Clean up a specific environment
-./scripts/cleanup-environments.sh staging
+# Clean up a specific per-app application
+./scripts/cleanup-environments.sh dev-demo-app
 
-# Clean up all environments (with confirmation)
+# Clean up all applications (with confirmation)
 ./scripts/cleanup-environments.sh --all
 
 # Dry run to see what would be deleted
 ./scripts/cleanup-environments.sh --all --dry-run
+
+# Demo per-app hook behavior
+./scripts/test-per-app-hooks.sh
+
+# Reset ArgoCD to clean state
+./scripts/reset-argocd.sh
 ```
 
 ### 📊 Monitoring & Status
 
 | Script | Description |
 |--------|-------------|
-| `monitor-environments.sh` | Monitor sync status across all environments |
+| `monitor-environments.sh` | Monitor sync status across all per-app applications |
 
 **Usage Examples:**
 ```bash
@@ -150,20 +158,20 @@ git push
 # Check status of all environments
 ./scripts/argocd-helper.sh status
 
-# Force sync a specific environment
-./scripts/argocd-helper.sh sync dev
+# Force sync a specific application
+./scripts/argocd-helper.sh sync dev-demo-app
 
-# Port forward to an environment
-./scripts/argocd-helper.sh port-forward staging 8081
+# Port forward to an application
+./scripts/argocd-helper.sh port-forward staging-api-service 8081
 
-# View logs
-./scripts/argocd-helper.sh logs production
+# View logs for an application
+./scripts/argocd-helper.sh logs production-demo-app
 ```
 
 ### 🧹 Cleanup Operations
 ```bash
-# Clean up specific environment
-./scripts/argocd-helper.sh cleanup staging
+# Clean up specific application
+./scripts/argocd-helper.sh cleanup dev-demo-app
 
 # See what would be deleted (dry run)
 ./scripts/cleanup-environments.sh --all --dry-run
@@ -188,6 +196,8 @@ chmod +x scripts/deploy-applications.sh
 chmod +x scripts/monitor-environments.sh
 chmod +x scripts/add-environment.sh
 chmod +x scripts/cleanup-environments.sh
+chmod +x scripts/test-per-app-hooks.sh
+chmod +x scripts/reset-argocd.sh
 ```
 
 ## 🛠️ Prerequisites

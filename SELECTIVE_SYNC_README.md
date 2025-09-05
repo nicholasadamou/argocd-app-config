@@ -171,3 +171,23 @@ spec:
 - **Production Changes**: Only `production-post-sync-validation` job runs with enhanced checks
 
 This ensures tests and validations only run when the specific environment actually changes.
+
+## 🔄 Reset to Clean State
+
+If you need to start fresh or migrate from the old structure, use the reset script:
+
+```bash
+./scripts/reset-argocd.sh
+```
+
+### Reset Script Features:
+- **Safe cleanup**: Removes all Applications and ApplicationSets
+- **Namespace cleanup**: Deletes all application namespaces
+- **Preserves core**: Keeps ArgoCD server, controller, and configuration intact
+- **Fresh start**: Ready for new per-app deployments
+
+### Use Cases:
+- 📦 **Migration**: Moving from environment-based to per-app structure  
+- 🧹 **Cleanup**: Remove test applications and start fresh
+- 🛮 **Troubleshooting**: Fix stuck or corrupted applications
+- 🔄 **Reset**: Return to baseline state for new experiments
