@@ -6,19 +6,16 @@ This repository implements **per-application selective syncing** in ArgoCD. This
 
 ```
 ├── application.yaml                    # ApplicationSet that manages all apps
-├── .argocd/                           # Per-app ArgoCD application definitions
-│   ├── dev-demo-app/
-│   │   └── app.yaml                   # Dev demo-app application
-│   ├── dev-api-service/
-│   │   └── app.yaml                   # Dev api-service application
-│   ├── staging-demo-app/
-│   │   └── app.yaml                   # Staging demo-app application
-│   ├── staging-api-service/
-│   │   └── app.yaml                   # Staging api-service application
-│   ├── production-demo-app/
-│   │   └── app.yaml                   # Production demo-app application
-│   └── production-api-service/
-│       └── app.yaml                   # Production api-service application
+├── apps/                              # Per-app ArgoCD application definitions
+│   ├── dev/
+│   │   ├── demo-app.yaml              # Dev demo-app application
+│   │   └── api-service.yaml           # Dev api-service application
+│   ├── staging/
+│   │   ├── demo-app.yaml              # Staging demo-app application
+│   │   └── api-service.yaml           # Staging api-service application
+│   └── production/
+│       ├── demo-app.yaml              # Production demo-app application
+│       └── api-service.yaml           # Production api-service application
 └── environments/                      # Environment-specific manifests
     ├── dev/                          # Dev environment manifests
     │   ├── demo-app/
@@ -125,7 +122,7 @@ With this structure, each application has its own post-sync hooks that only exec
 
 ### Implementation
 
-Each application in `.argocd/*/app.yaml` contains environment-specific hooks:
+Each application in `apps/*/` contains environment-specific hooks:
 
 ```yaml
 spec:

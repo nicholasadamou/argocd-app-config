@@ -217,9 +217,8 @@ create_argocd_applications() {
     
     log_info "Creating ArgoCD per-app application definitions for '$env_name'..."
     
-    # Create .argocd directories for each app
-    mkdir -p "$PROJECT_ROOT/.argocd/$env_name-demo-app"
-    mkdir -p "$PROJECT_ROOT/.argocd/$env_name-api-service"
+    # Create apps directory structure for each app
+    mkdir -p "$PROJECT_ROOT/apps/$env_name"
     
     # Determine sync policy
     local automated_section=""
@@ -230,7 +229,7 @@ create_argocd_applications() {
     fi
     
     # Create demo-app ArgoCD application
-    cat > "$PROJECT_ROOT/.argocd/$env_name-demo-app/app.yaml" << EOF
+    cat > "$PROJECT_ROOT/apps/$env_name/demo-app.yaml" << EOF
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -241,7 +240,7 @@ spec:
   source:
     repoURL: https://github.com/nicholasadamou/argocd-app-config.git
     targetRevision: HEAD
-    path: $env_name/demo-app
+    path: environments/$env_name/demo-app
   destination: 
     server: https://kubernetes.default.svc
     namespace: $env_name-demo-app
@@ -252,7 +251,7 @@ $automated_section
 EOF
 
     # Create api-service ArgoCD application
-    cat > "$PROJECT_ROOT/.argocd/$env_name-api-service/app.yaml" << EOF
+    cat > "$PROJECT_ROOT/apps/$env_name/api-service.yaml" << EOF
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -263,7 +262,7 @@ spec:
   source:
     repoURL: https://github.com/nicholasadamou/argocd-app-config.git
     targetRevision: HEAD
-    path: $env_name/api-service
+    path: environments/$env_name/api-service
   destination: 
     server: https://kubernetes.default.svc
     namespace: $env_name-api-service
@@ -295,12 +294,12 @@ show_summary() {
     echo "  Auto Heal:      $auto_heal"
     echo
     echo "Files created:"
-    echo "  $env_name/demo-app/deployment.yaml"
-    echo "  $env_name/demo-app/service.yaml"
-    echo "  $env_name/api-service/deployment.yaml"
-    echo "  $env_name/api-service/service.yaml"
-    echo "  .argocd/$env_name-demo-app/app.yaml"
-    echo "  .argocd/$env_name-api-service/app.yaml"
+    echo "  environments/$env_name/demo-app/deployment.yaml"
+    echo "  environments/$env_name/demo-app/service.yaml"
+    echo "  environments/$env_name/api-service/deployment.yaml"
+    echo "  environments/$env_name/api-service/service.yaml"
+    echo "  apps/$env_name/demo-app.yaml"
+    echo "  apps/$env_name/api-service.yaml"
     echo
     echo "Applications created:"
     echo "  - $env_name-demo-app"
@@ -309,7 +308,7 @@ show_summary() {
     echo "Next steps:"
     echo "  1. Review and customize the generated manifests"
     echo "  2. Commit and push the changes:"
-    echo "     git add $env_name/ .argocd/$env_name-*/"
+    echo "     git add environments/$env_name/ apps/$env_name/"
     echo "     git commit -m \"Add $env_name environment with per-app structure\""
     echo "     git push"
     echo "  3. The ApplicationSet will automatically detect and deploy the new per-app applications"

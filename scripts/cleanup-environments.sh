@@ -74,13 +74,20 @@ confirm_action() {
 get_applications() {
     local applications=()
     
-    # Get applications from .argocd directory
-    if [ -d ".argocd" ]; then
-        for dir in .argocd/*/; do
-            if [ -d "$dir" ]; then
-                local app_name
-                app_name=$(basename "$dir")
-                applications+=("$app_name")
+    # Get applications from apps directory
+    if [ -d "apps" ]; then
+        for env_dir in apps/*/; do
+            if [ -d "$env_dir" ]; then
+                local env_name
+                env_name=$(basename "$env_dir")
+                for app_file in "$env_dir"*.yaml; do
+                    if [ -f "$app_file" ]; then
+                        local app_name
+                        app_name=$(basename "$app_file" .yaml)
+                        local full_app_name="$env_name-$app_name"
+                        applications+=("$full_app_name")
+                    fi
+                done
             fi
         done
     fi
@@ -143,8 +150,11 @@ cleanup_manifests() {
         if [ -d "$manifest_dir" ]; then
             echo "[DRY RUN] Would delete directory: $manifest_dir/"
         fi
-        if [ -d ".argocd/$app_name" ]; then
-            echo "[DRY RUN] Would delete directory: .argocd/$app_name/"
+        # Extract environment and service from app name for apps directory
+        local env_name=${app_name%%-*}
+        local service_name=${app_name#*-}
+        if [ -f "apps/$env_name/$service_name.yaml" ]; then
+            echo "[DRY RUN] Would delete file: apps/$env_name/$service_name.yaml"
         fi
         return
     fi
@@ -165,12 +175,21 @@ cleanup_manifests() {
         log_warning "Directory $manifest_dir/ not found"
     fi
     
-    # Remove .argocd application definition
-    if [ -d ".argocd/$app_name" ]; then
-        rm -rf ".argocd/$app_name"
-        log_success "Deleted directory: .argocd/$app_name/"
+    # Remove apps application definition
+    local env_name=${app_name%%-*}
+    local service_name=${app_name#*-}
+    local app_file="apps/$env_name/$service_name.yaml"
+    if [ -f "$app_file" ]; then
+        rm -f "$app_file"
+        log_success "Deleted file: $app_file"
+        
+        # Remove environment directory if it's now empty
+        if [ -d "apps/$env_name" ] && [ -z "$(ls -A "apps/$env_name")" ]; then
+            rm -rf "apps/$env_name"
+            log_success "Deleted empty environment directory: apps/$env_name/"
+        fi
     else
-        log_warning "Directory .argocd/$app_name/ not found"
+        log_warning "File $app_file not found"
     fi
 }
 

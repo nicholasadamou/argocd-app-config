@@ -11,19 +11,16 @@ This repository contains Kubernetes manifests and ArgoCD application configurati
 ├── README.md                           # This documentation
 ├── SELECTIVE_SYNC_README.md            # Detailed per-app sync documentation
 ├── application.yaml                    # ArgoCD ApplicationSet (manages all apps)
-├── .argocd/                           # Per-app ArgoCD application definitions
-│   ├── dev-demo-app/
-│   │   └── app.yaml                   # Dev demo-app with custom post-sync hook
-│   ├── dev-api-service/
-│   │   └── app.yaml                   # Dev api-service with custom post-sync hook
-│   ├── staging-demo-app/
-│   │   └── app.yaml                   # Staging demo-app with enhanced validation
-│   ├── staging-api-service/
-│   │   └── app.yaml                   # Staging api-service with validation
-│   ├── production-demo-app/
-│   │   └── app.yaml                   # Production demo-app with comprehensive checks
-│   └── production-api-service/
-│       └── app.yaml                   # Production api-service with load balancer validation
+├── apps/                              # Per-app ArgoCD application definitions
+│   ├── dev/
+│   │   ├── demo-app.yaml             # Dev demo-app with custom post-sync hook
+│   │   └── api-service.yaml          # Dev api-service with custom post-sync hook
+│   ├── staging/
+│   │   ├── demo-app.yaml             # Staging demo-app with enhanced validation
+│   │   └── api-service.yaml          # Staging api-service with validation
+│   └── production/
+│       ├── demo-app.yaml             # Production demo-app with comprehensive checks
+│       └── api-service.yaml          # Production api-service with load balancer validation
 ├── environments/                      # Environment-specific manifests
 │   ├── dev/                          # Development environment
 │   │   ├── demo-app/                 # Demo application

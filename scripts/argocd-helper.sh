@@ -84,29 +84,34 @@ list_applications() {
     log_info "Configured per-app applications:"
     echo
     
-    if [ ! -d "$PROJECT_ROOT/.argocd" ]; then
-        log_warning "No .argocd directory found"
+    if [ ! -d "$PROJECT_ROOT/apps" ]; then
+        log_warning "No apps directory found"
         return
     fi
     
     local count=0
-    for dir in "$PROJECT_ROOT"/.argocd/*/; do
-        if [ -d "$dir" ]; then
-            local app_name
-            app_name=$(basename "$dir")
-            local status="✅"
-            
-            # Extract environment and app from name (e.g., "dev-demo-app" -> "dev" and "demo-app")
-            local env_name=${app_name%%-*}
-            local service_name=${app_name#*-}
-            local manifest_dir="$PROJECT_ROOT/$env_name/$service_name"
-            
-            if [ ! -d "$manifest_dir" ]; then
-                status="❌ (missing manifests at $manifest_dir)"
-            fi
-            
-            echo "  $status $app_name"
-            ((count++))
+    for env_dir in "$PROJECT_ROOT"/apps/*/; do
+        if [ -d "$env_dir" ]; then
+            local env_name
+            env_name=$(basename "$env_dir")
+            for app_file in "$env_dir"*.yaml; do
+                if [ -f "$app_file" ]; then
+                    local app_name
+                    app_name=$(basename "$app_file" .yaml)
+                    local full_app_name="$env_name-$app_name"
+                    local status="✅"
+                    
+                    # Check if corresponding manifests exist in environments/
+                    local manifest_dir="$PROJECT_ROOT/environments/$env_name/$app_name"
+                    
+                    if [ ! -d "$manifest_dir" ]; then
+                        status="❌ (missing manifests at $manifest_dir)"
+                    fi
+                    
+                    echo "  $status $full_app_name"
+                    ((count++))
+                fi
+            done
         fi
     done
     
@@ -133,52 +138,57 @@ validate_config() {
         log_success "application.yaml found"
     fi
     
-    # Check .argocd directory
-    if [ ! -d "$PROJECT_ROOT/.argocd" ]; then
-        log_error ".argocd directory not found"
+    # Check apps directory
+    if [ ! -d "$PROJECT_ROOT/apps" ]; then
+        log_error "apps directory not found"
         ((errors++))
     else
-        log_success ".argocd directory found"
+        log_success "apps directory found"
     fi
     
     # Validate each application
-    for dir in "$PROJECT_ROOT"/.argocd/*/; do
-        if [ -d "$dir" ]; then
-            local app_name
-            app_name=$(basename "$dir")
-            log_info "Validating application: $app_name"
+    for env_dir in "$PROJECT_ROOT"/apps/*/; do
+        if [ -d "$env_dir" ]; then
+            local env_name
+            env_name=$(basename "$env_dir")
+            for app_file in "$env_dir"*.yaml; do
+                if [ -f "$app_file" ]; then
+                    local app_name
+                    app_name=$(basename "$app_file" .yaml)
+                    local full_app_name="$env_name-$app_name"
+                    log_info "Validating application: $full_app_name"
+                    
+                    # Check ArgoCD app definition
+                    if [ ! -f "$app_file" ]; then
+                        log_error "  Missing apps/$env_name/$app_name.yaml"
+                        ((errors++))
+                    fi
+                    
+                    # Check manifest directory
+                    local manifest_dir="$PROJECT_ROOT/environments/$env_name/$app_name"
             
-            # Check ArgoCD app definition
-            if [ ! -f "$dir/app.yaml" ]; then
-                log_error "  Missing .argocd/$app_name/app.yaml"
-                ((errors++))
-            fi
-            
-            # Extract environment and service from app name
-            local env_name=${app_name%%-*}
-            local service_name=${app_name#*-}
-            local manifest_dir="$PROJECT_ROOT/$env_name/$service_name"
-            
-            # Check manifest directory
-            if [ ! -d "$manifest_dir" ]; then
-                log_error "  Missing manifest directory: $manifest_dir/"
-                ((errors++))
-            else
-                # Check required manifests
-                if [ ! -f "$manifest_dir/deployment.yaml" ]; then
-                    log_error "  Missing $manifest_dir/deployment.yaml"
-                    ((errors++))
+                    # Check manifest directory
+                    if [ ! -d "$manifest_dir" ]; then
+                        log_error "  Missing manifest directory: $manifest_dir/"
+                        ((errors++))
+                    else
+                        # Check required manifests
+                        if [ ! -f "$manifest_dir/deployment.yaml" ]; then
+                            log_error "  Missing $manifest_dir/deployment.yaml"
+                            ((errors++))
+                        fi
+                        
+                        if [ ! -f "$manifest_dir/service.yaml" ]; then
+                            log_error "  Missing $manifest_dir/service.yaml"
+                            ((errors++))
+                        fi
+                    fi
+                    
+                    if [ $errors -eq 0 ]; then
+                        log_success "  Application $full_app_name is valid"
+                    fi
                 fi
-                
-                if [ ! -f "$manifest_dir/service.yaml" ]; then
-                    log_error "  Missing $manifest_dir/service.yaml"
-                    ((errors++))
-                fi
-            fi
-            
-            if [ $errors -eq 0 ]; then
-                log_success "  Application $app_name is valid"
-            fi
+            done
         fi
     done
     
